@@ -1,0 +1,19 @@
+# Build artifacts
+dist
+frontend/dist
+backend/**/bin/
+backend/**/obj/
+
+# Deno cache (local)
+.deno/
+
+# Logs
+*.log
+
+# Environment files
+.env
+frontend/.env
+
+# Editor
+.DS_Store
+.vscode/

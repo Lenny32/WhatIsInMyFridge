@@ -1,0 +1,151 @@
+:root {
+  color-scheme: light dark;
+  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background-color: #0e1216;
+  color: #f5f6f7;
+}
+
+body {
+  margin: 0;
+}
+
+main {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 3rem;
+}
+
+h1,
+h2,
+h3 {
+  font-weight: 600;
+  margin: 0 0 0.75rem;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  background-color: #2f80ed;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 1.1rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+button.secondary {
+  background-color: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+button.danger {
+  background-color: #eb5757;
+}
+
+button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+input,
+select,
+textarea {
+  background-color: #171d23;
+  border: 1px solid #2a3139;
+  border-radius: 6px;
+  color: inherit;
+  padding: 0.5rem 0.75rem;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+}
+
+th,
+td {
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.tabs button {
+  background-color: #1f252c;
+}
+
+.tabs button.active {
+  background-color: #2f80ed;
+}
+
+.inventory-card {
+  background-color: #141a20;
+  border-radius: 12px;
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.26);
+}
+
+.inline-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.form-grid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.form-grid > div {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.35rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.status-low {
+  color: #f2994a;
+}
+
+.status-expired {
+  color: #eb5757;
+}
+
+.layout {
+  display: grid;
+  gap: 1.5rem;
+}
+
+@media screen and (min-width: 900px) {
+  .layout {
+    grid-template-columns: 2fr 1fr;
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "nodeModulesDir": "auto",
+  "tasks": {
+    "dev": "deno run -A npm:vite",
+    "build": "deno run -A npm:vite build",
+    "preview": "deno run -A npm:vite preview",
+    "check": "deno run -A npm:svelte-check --tsconfig ./tsconfig.json"
+  },
+  "compilerOptions": {
+    "strict": true
+  },
+  "imports": {
+    "@sveltejs/vite-plugin-svelte": "npm:@sveltejs/vite-plugin-svelte@^3.0.2",
+    "svelte": "npm:svelte@^4.2.12",
+    "svelte/internal": "npm:svelte@^4.2.12/internal",
+    "svelte/store": "npm:svelte@^4.2.12/store",
+    "svelte/transition": "npm:svelte@^4.2.12/transition",
+    "vite": "npm:vite@^5.2.8"
+  }
+}
