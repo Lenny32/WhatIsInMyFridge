@@ -7,6 +7,10 @@ backend/**/obj/
 # Deno cache (local)
 .deno/
 
+# Generated files
+frontend/src/lib/api-types.ts
+frontend/openapi-spec.json
+
 # Logs
 *.log
 
@@ -17,3 +21,6 @@ frontend/.env
 # Editor
 .DS_Store
 .vscode/
+
+# Database files
+backend/data/

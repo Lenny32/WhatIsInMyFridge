@@ -1,0 +1,70 @@
+{
+  "hash": "301c613f",
+  "configHash": "9faac46c",
+  "lockfileHash": "e3b0c442",
+  "browserHash": "258b3b3a",
+  "optimized": {
+    "svelte/animate": {
+      "src": "../../node_modules/.deno/svelte@4.2.20/node_modules/svelte/src/runtime/animate/index.js",
+      "file": "svelte_animate.js",
+      "fileHash": "ad45f1a0",
+      "needsInterop": false
+    },
+    "svelte/easing": {
+      "src": "../../node_modules/.deno/svelte@4.2.20/node_modules/svelte/src/runtime/easing/index.js",
+      "file": "svelte_easing.js",
+      "fileHash": "8f60a5a6",
+      "needsInterop": false
+    },
+    "svelte/internal": {
+      "src": "../../node_modules/.deno/svelte@4.2.20/node_modules/svelte/src/runtime/internal/index.js",
+      "file": "svelte_internal.js",
+      "fileHash": "6e9451ae",
+      "needsInterop": false
+    },
+    "svelte/internal/disclose-version": {
+      "src": "../../node_modules/.deno/svelte@4.2.20/node_modules/svelte/src/runtime/internal/disclose-version/index.js",
+      "file": "svelte_internal_disclose-version.js",
+      "fileHash": "50d4ee26",
+      "needsInterop": false
+    },
+    "svelte/motion": {
+      "src": "../../node_modules/.deno/svelte@4.2.20/node_modules/svelte/src/runtime/motion/index.js",
+      "file": "svelte_motion.js",
+      "fileHash": "8463cca3",
+      "needsInterop": false
+    },
+    "svelte/store": {
+      "src": "../../node_modules/.deno/svelte@4.2.20/node_modules/svelte/src/runtime/store/index.js",
+      "file": "svelte_store.js",
+      "fileHash": "4a144856",
+      "needsInterop": false
+    },
+    "svelte/transition": {
+      "src": "../../node_modules/.deno/svelte@4.2.20/node_modules/svelte/src/runtime/transition/index.js",
+      "file": "svelte_transition.js",
+      "fileHash": "ac33a14e",
+      "needsInterop": false
+    },
+    "svelte": {
+      "src": "../../node_modules/.deno/svelte@4.2.20/node_modules/svelte/src/runtime/index.js",
+      "file": "svelte.js",
+      "fileHash": "b55bf832",
+      "needsInterop": false
+    }
+  },
+  "chunks": {
+    "chunk-IPM5D6QB": {
+      "file": "chunk-IPM5D6QB.js"
+    },
+    "chunk-Y5FWEU4D": {
+      "file": "chunk-Y5FWEU4D.js"
+    },
+    "chunk-M7P5KDCW": {
+      "file": "chunk-M7P5KDCW.js"
+    },
+    "chunk-J67ZKZ56": {
+      "file": "chunk-J67ZKZ56.js"
+    }
+  }
+}

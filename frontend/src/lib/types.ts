@@ -9,7 +9,6 @@ export interface FoodItem {
   restockThreshold: number;
   expiresAt?: string;
   category?: string | null;
-  trackShoppingList: boolean;
   notes?: string | null;
   createdAt: string;
   updatedAt: string;
@@ -23,8 +22,40 @@ export interface CreateFoodItem {
   restockThreshold: number;
   expiresAt?: string;
   category?: string;
-  trackShoppingList?: boolean;
   notes?: string;
 }
 
 export type UpdateFoodItem = Partial<CreateFoodItem>;
+
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+  householdIds: string[];
+  currentHouseholdId?: string | null;
+}
+
+export interface Household {
+  id: string;
+  name: string;
+  ownerId: string;
+  memberIds: string[];
+}
+
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface RegisterRequest {
+  email: string;
+  password: string;
+  name: string;
+  householdName: string;
+}
+
+export interface AuthResponse {
+  token: string;
+  user: User;
+  household?: Household;
+}

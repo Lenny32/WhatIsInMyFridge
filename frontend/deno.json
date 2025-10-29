@@ -4,13 +4,16 @@
     "dev": "deno run -A npm:vite",
     "build": "deno run -A npm:vite build",
     "preview": "deno run -A npm:vite preview",
-    "check": "deno run -A npm:svelte-check --tsconfig ./tsconfig.json"
+    "check": "deno run -A npm:svelte-check --tsconfig ./tsconfig.json",
+    "generate-api": "deno run -A scripts/generate-api.ts"
   },
   "compilerOptions": {
     "strict": true
   },
   "imports": {
     "@sveltejs/vite-plugin-svelte": "npm:@sveltejs/vite-plugin-svelte@^3.0.2",
+    "openapi-fetch": "npm:openapi-fetch@^0.12.3",
+    "openapi-typescript": "npm:openapi-typescript@^7.4.4",
     "svelte": "npm:svelte@^4.2.12",
     "svelte/internal": "npm:svelte@^4.2.12/internal",
     "svelte/store": "npm:svelte@^4.2.12/store",

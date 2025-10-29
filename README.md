@@ -44,3 +44,26 @@ Data persists to `backend/data/items.json`; swap the `FoodInventoryStore` servic
 - Shopping list sidebar sourced directly from the `/api/items/to-buy` endpoint.
 
 Run `deno task build` for a production bundle or `deno task check` to type-check and lint the Svelte project.
+
+## Automated API Client Generation
+
+This project supports **automatic TypeScript client generation** from the backend's OpenAPI/Swagger specification. This ensures type safety and keeps the frontend in sync with backend changes.
+
+### Quick Start
+
+```bash
+# 1. Start the backend
+cd backend && dotnet run --project WhatIsInMyFridge.Api
+
+# 2. Generate TypeScript types (in a new terminal)
+cd frontend && deno task generate-api
+```
+
+This creates `frontend/src/lib/api-types.ts` with fully typed interfaces for all API endpoints. See [OPENAPI_CODEGEN.md](OPENAPI_CODEGEN.md) for detailed documentation and usage examples.
+
+### Benefits
+
+✅ Full TypeScript autocomplete for all endpoints  
+✅ Compile-time validation of API calls  
+✅ Automatic sync when backend changes  
+✅ Single source of truth for API contracts

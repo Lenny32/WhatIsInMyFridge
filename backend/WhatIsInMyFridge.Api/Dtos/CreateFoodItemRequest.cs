@@ -27,8 +27,6 @@ public sealed class CreateFoodItemRequest
     [StringLength(50)]
     public string? Category { get; set; }
 
-    public bool TrackShoppingList { get; set; } = true;
-
     [StringLength(500)]
     public string? Notes { get; set; }
 }

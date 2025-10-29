@@ -24,8 +24,6 @@ public sealed class UpdateFoodItemRequest
     [StringLength(50)]
     public string? Category { get; set; }
 
-    public bool? TrackShoppingList { get; set; }
-
     [StringLength(500)]
     public string? Notes { get; set; }
 }
