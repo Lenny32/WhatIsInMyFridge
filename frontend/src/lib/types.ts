@@ -63,3 +63,48 @@ export interface AuthResponse {
   user: User;
   household?: Household;
 }
+
+export interface RecipeIngredient {
+  id: string;
+  recipeId: string;
+  name: string;
+  quantity: number;
+  unit: MeasurementUnit;
+  notes?: string | null;
+}
+
+export interface Recipe {
+  id: string;
+  householdId: string;
+  name: string;
+  description?: string | null;
+  servings: number;
+  prepTimeMinutes: number;
+  cookTimeMinutes: number;
+  ingredients: RecipeIngredient[];
+  instructions: string[];
+  notes?: string | null;
+  photos: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateRecipeIngredient {
+  name: string;
+  quantity: number;
+  unit: MeasurementUnit;
+  notes?: string;
+}
+
+export interface CreateRecipe {
+  name: string;
+  description?: string;
+  servings: number;
+  prepTimeMinutes: number;
+  cookTimeMinutes: number;
+  ingredients: CreateRecipeIngredient[];
+  instructions: string[];
+  notes?: string;
+}
+
+export type UpdateRecipe = Partial<CreateRecipe>;

@@ -12,6 +12,7 @@
   },
   "imports": {
     "@sveltejs/vite-plugin-svelte": "npm:@sveltejs/vite-plugin-svelte@^3.0.2",
+    "@types/node": "npm:@types/node@^22",
     "openapi-fetch": "npm:openapi-fetch@^0.12.3",
     "openapi-typescript": "npm:openapi-typescript@^7.4.4",
     "svelte": "npm:svelte@^4.2.12",

@@ -16,16 +16,14 @@ public sealed class CreateFoodItemRequest
     public decimal Quantity { get; set; }
 
     [Required]
-    [StringLength(20)]
-    public string Unit { get; set; } = "pcs";
+    public MeasurementUnit Unit { get; set; } = MeasurementUnit.Pieces;
 
     [Range(0, double.MaxValue)]
     public decimal RestockThreshold { get; set; } = 1;
 
     public DateTimeOffset? ExpiresAt { get; set; }
 
-    [StringLength(50)]
-    public string? Category { get; set; }
+    public FoodCategory Category { get; set; } = FoodCategory.Undefined;
 
     [StringLength(500)]
     public string? Notes { get; set; }

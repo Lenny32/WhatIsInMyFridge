@@ -13,16 +13,14 @@ public sealed class UpdateFoodItemRequest
     [Range(0, double.MaxValue)]
     public decimal? Quantity { get; set; }
 
-    [StringLength(20)]
-    public string? Unit { get; set; }
+    public MeasurementUnit? Unit { get; set; }
 
     [Range(0, double.MaxValue)]
     public decimal? RestockThreshold { get; set; }
 
     public DateTimeOffset? ExpiresAt { get; set; }
 
-    [StringLength(50)]
-    public string? Category { get; set; }
+    public FoodCategory? Category { get; set; }
 
     [StringLength(500)]
     public string? Notes { get; set; }

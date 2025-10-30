@@ -1,9 +1,14 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Any;
+using Microsoft.OpenApi.Models;
+using Swashbuckle.AspNetCore.SwaggerGen;
+using WhatIsInMyFridge.Api;
 using WhatIsInMyFridge.Api.Dtos;
 using WhatIsInMyFridge.Api.Models;
 using WhatIsInMyFridge.Api.Services;
@@ -20,6 +25,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddScoped<UserStore>();
 builder.Services.AddScoped<HouseholdStore>();
 builder.Services.AddScoped<FoodInventoryStore>();
+builder.Services.AddScoped<RecipeStore>();
 builder.Services.AddSingleton<PasswordHasher>();
 builder.Services.AddScoped<AuthenticationService>();
 builder.Services.AddScoped<ApplicationContext>();
@@ -57,7 +63,10 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 });
 
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SchemaFilter<StringEnumSchemaFilter>();
+});
 
 var app = builder.Build();
 
@@ -65,7 +74,7 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    dbContext.Database.EnsureCreated();
+    dbContext.Database.Migrate();
 }
 
 app.UseSwagger();
@@ -420,6 +429,198 @@ app.MapDelete("/api/items/{id}", async Task<IResult> (string id, FoodInventorySt
     var deleted = await store.DeleteAsync(id);
     return deleted ? Results.NoContent() : Results.NotFound();
 }).RequireAuthorization();
+
+// Recipe endpoints
+app.MapGet("/api/recipes", async Task<IResult> (HttpContext httpContext, RecipeStore store) =>
+{
+    var householdId = httpContext.User.FindFirst("householdId")?.Value;
+    if (string.IsNullOrEmpty(householdId))
+    {
+        return Results.Unauthorized();
+    }
+
+    var recipes = await store.GetRecipesAsync(householdId);
+    return Results.Ok(recipes);
+}).RequireAuthorization();
+
+app.MapGet("/api/recipes/{id}", async Task<IResult> (string id, RecipeStore store) =>
+{
+    var recipe = await store.GetByIdAsync(id);
+    return recipe is null ? Results.NotFound() : Results.Ok(recipe);
+}).RequireAuthorization();
+
+app.MapPost("/api/recipes", async Task<IResult> (CreateRecipeRequest request, HttpContext httpContext, RecipeStore store) =>
+{
+    var householdId = httpContext.User.FindFirst("householdId")?.Value;
+    if (string.IsNullOrEmpty(householdId))
+    {
+        return Results.Unauthorized();
+    }
+
+    if (!Validate(request, out var errors))
+    {
+        return Results.ValidationProblem(errors);
+    }
+
+    var recipe = await store.CreateAsync(householdId, request);
+    return Results.Created($"/api/recipes/{recipe.Id}", recipe);
+}).RequireAuthorization();
+
+app.MapPatch("/api/recipes/{id}", async Task<IResult> (string id, UpdateRecipeRequest request, RecipeStore store) =>
+{
+    if (!Validate(request, out var errors))
+    {
+        return Results.ValidationProblem(errors);
+    }
+
+    var updated = await store.UpdateAsync(id, request);
+    return updated is null ? Results.NotFound() : Results.Ok(updated);
+}).RequireAuthorization();
+
+app.MapDelete("/api/recipes/{id}", async Task<IResult> (string id, RecipeStore store) =>
+{
+    var deleted = await store.DeleteAsync(id);
+    return deleted ? Results.NoContent() : Results.NotFound();
+}).RequireAuthorization();
+
+// Ingredient autocomplete endpoint
+app.MapGet("/api/ingredients/suggestions", async Task<IResult> (string? query, HttpContext httpContext, RecipeStore store) =>
+{
+    var householdId = httpContext.User.FindFirst("householdId")?.Value;
+    if (string.IsNullOrEmpty(householdId))
+    {
+        return Results.Unauthorized();
+    }
+
+    if (string.IsNullOrWhiteSpace(query) || query.Length < 2)
+    {
+        return Results.Ok(Array.Empty<string>());
+    }
+
+    var suggestions = await store.GetIngredientSuggestionsAsync(householdId, query);
+    return Results.Ok(suggestions);
+}).RequireAuthorization();
+
+// Photo upload endpoint
+app.MapPost("/api/recipes/{id}/photos", async Task<IResult> (string id, IFormFile file, HttpContext httpContext, RecipeStore store) =>
+{
+    var householdId = httpContext.User.FindFirst("householdId")?.Value;
+    if (string.IsNullOrEmpty(householdId))
+    {
+        return Results.Unauthorized();
+    }
+
+    var recipe = await store.GetByIdAsync(id);
+    if (recipe == null || recipe.HouseholdId != householdId)
+    {
+        return Results.NotFound();
+    }
+
+    if (recipe.Photos.Count >= 4)
+    {
+        return Results.BadRequest(new { error = "Maximum 4 photos allowed per recipe" });
+    }
+
+    // Validate file
+    if (file.Length == 0)
+    {
+        return Results.BadRequest(new { error = "Empty file" });
+    }
+
+    if (file.Length > 5 * 1024 * 1024) // 5MB limit
+    {
+        return Results.BadRequest(new { error = "File too large. Maximum size is 5MB" });
+    }
+
+    var allowedTypes = new[] { "image/jpeg", "image/jpg", "image/png", "image/webp" };
+    if (!allowedTypes.Contains(file.ContentType.ToLowerInvariant()))
+    {
+        return Results.BadRequest(new { error = "Invalid file type. Only JPEG, PNG, and WebP images are allowed" });
+    }
+
+    // Create photos directory
+    var photosDir = Path.Combine(dataDir, "photos");
+    Directory.CreateDirectory(photosDir);
+
+    // Generate unique filename
+    var extension = Path.GetExtension(file.FileName);
+    var photoId = Guid.NewGuid().ToString("N");
+    var fileName = $"{photoId}{extension}";
+    var filePath = Path.Combine(photosDir, fileName);
+
+    // Save file
+    using (var stream = new FileStream(filePath, FileMode.Create))
+    {
+        await file.CopyToAsync(stream);
+    }
+
+    // Update recipe
+    recipe.Photos.Add(photoId);
+    recipe.UpdatedAt = DateTimeOffset.UtcNow;
+    await store.UpdatePhotosAsync(id, recipe.Photos);
+
+    return Results.Ok(new { photoId, url = $"/api/photos/{photoId}{extension}" });
+}).RequireAuthorization().DisableAntiforgery();
+
+// Delete photo endpoint
+app.MapDelete("/api/recipes/{id}/photos/{photoId}", async Task<IResult> (string id, string photoId, HttpContext httpContext, RecipeStore store) =>
+{
+    var householdId = httpContext.User.FindFirst("householdId")?.Value;
+    if (string.IsNullOrEmpty(householdId))
+    {
+        return Results.Unauthorized();
+    }
+
+    var recipe = await store.GetByIdAsync(id);
+    if (recipe == null || recipe.HouseholdId != householdId)
+    {
+        return Results.NotFound();
+    }
+
+    if (!recipe.Photos.Contains(photoId))
+    {
+        return Results.NotFound();
+    }
+
+    // Delete file
+    var photosDir = Path.Combine(dataDir, "photos");
+    var matchingFiles = Directory.GetFiles(photosDir, $"{photoId}.*");
+    foreach (var file in matchingFiles)
+    {
+        File.Delete(file);
+    }
+
+    // Update recipe
+    recipe.Photos.Remove(photoId);
+    recipe.UpdatedAt = DateTimeOffset.UtcNow;
+    await store.UpdatePhotosAsync(id, recipe.Photos);
+
+    return Results.NoContent();
+}).RequireAuthorization();
+
+// Serve photo files
+app.MapGet("/api/photos/{fileName}", async Task<IResult> (string fileName) =>
+{
+    var photosDir = Path.Combine(dataDir, "photos");
+    var filePath = Path.Combine(photosDir, fileName);
+
+    if (!File.Exists(filePath))
+    {
+        return Results.NotFound();
+    }
+
+    var extension = Path.GetExtension(fileName).ToLowerInvariant();
+    var contentType = extension switch
+    {
+        ".jpg" or ".jpeg" => "image/jpeg",
+        ".png" => "image/png",
+        ".webp" => "image/webp",
+        _ => "application/octet-stream"
+    };
+
+    var fileBytes = await File.ReadAllBytesAsync(filePath);
+    return Results.File(fileBytes, contentType);
+});
 
 app.Run();
 

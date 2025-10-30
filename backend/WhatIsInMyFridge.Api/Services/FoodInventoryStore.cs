@@ -47,10 +47,10 @@ public sealed class FoodInventoryStore
             Name = request.Name.Trim(),
             Location = request.Location,
             Quantity = request.Quantity,
-            Unit = request.Unit.Trim(),
+            Unit = request.Unit,
             RestockThreshold = request.RestockThreshold,
             ExpiresAt = request.ExpiresAt,
-            Category = request.Category?.Trim(),
+            Category = request.Category,
             Notes = request.Notes?.Trim(),
             CreatedAt = now,
             UpdatedAt = now
@@ -69,10 +69,10 @@ public sealed class FoodInventoryStore
         existing.Name = request.Name is { Length: > 0 } name ? name.Trim() : existing.Name;
         existing.Location = request.Location ?? existing.Location;
         existing.Quantity = request.Quantity ?? existing.Quantity;
-        existing.Unit = request.Unit is { Length: > 0 } unit ? unit.Trim() : existing.Unit;
+        existing.Unit = request.Unit ?? existing.Unit;
         existing.RestockThreshold = request.RestockThreshold ?? existing.RestockThreshold;
         existing.ExpiresAt = request.ExpiresAt ?? existing.ExpiresAt;
-        existing.Category = request.Category is { Length: > 0 } category ? category.Trim() : request.Category == string.Empty ? null : existing.Category;
+        existing.Category = request.Category ?? existing.Category;
         existing.Notes = request.Notes is { Length: > 0 } notes ? notes.Trim() : request.Notes == string.Empty ? null : existing.Notes;
         existing.UpdatedAt = DateTimeOffset.UtcNow;
 

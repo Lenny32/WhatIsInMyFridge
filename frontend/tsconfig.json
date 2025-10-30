@@ -2,6 +2,7 @@
   "compilerOptions": {
     "module": "esnext",
     "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
     "allowJs": true,
     "checkJs": false,
     "esModuleInterop": true,
@@ -9,7 +10,7 @@
     "moduleDetection": "force",
     "resolveJsonModule": true,
     "strict": true,
-    "types": ["svelte", "vite/client"]
+    "types": ["svelte", "vite/client", "node"]
   },
   "include": ["src/**/*.d.ts", "src/**/*.ts", "src/**/*.svelte", "vite.config.ts", "svelte.config.js"],
   "references": [{ "path": "./tsconfig.node.json" }]
