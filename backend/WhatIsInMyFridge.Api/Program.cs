@@ -2,8 +2,10 @@ using System.ComponentModel.DataAnnotations;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Azure.Storage.Blobs;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Any;
 using Microsoft.OpenApi.Models;
@@ -15,12 +17,67 @@ using WhatIsInMyFridge.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var dataDir = Path.Combine(AppContext.BaseDirectory, "..", "data");
-Directory.CreateDirectory(dataDir);
-var dbPath = Path.Combine(dataDir, "whatsinmyfridge.db");
+// Check if running with Aspire orchestration (AppHost)
+var useAspire = builder.Configuration.GetValue<bool>("UseAspire", false);
 
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlite($"Data Source={dbPath}"));
+// Add Aspire service defaults only if configured
+if (useAspire)
+{
+    builder.AddServiceDefaults();
+}
+
+// Use /app/data in production (Docker), or ../data locally for photos
+var dataDir = builder.Environment.IsProduction() 
+    ? "/app/data" 
+    : Path.Combine(AppContext.BaseDirectory, "..", "data");
+Directory.CreateDirectory(dataDir);
+
+// Configure Cosmos DB
+if (useAspire)
+{
+    // Aspire will inject the connection string
+    // Connection string name matches the resource name in AppHost.cs
+    builder.AddCosmosDbContext<AppDbContext>("WhatIsInMyFridge");
+}
+else
+{
+    // Standalone mode - use direct connection string and database name
+    var cosmosConnectionString = builder.Configuration.GetConnectionString("CosmosDb") 
+        ?? Environment.GetEnvironmentVariable("COSMOS_CONNECTION_STRING");
+    var databaseName = builder.Configuration["CosmosDb:DatabaseName"] 
+        ?? Environment.GetEnvironmentVariable("COSMOS_DATABASE_NAME") 
+        ?? "WhatIsInMyFridge";
+    
+    if (string.IsNullOrEmpty(cosmosConnectionString))
+    {
+        throw new InvalidOperationException("Cosmos DB connection string is required. Set ConnectionStrings:CosmosDb or COSMOS_CONNECTION_STRING environment variable.");
+    }
+    
+    builder.Services.AddDbContext<AppDbContext>(options =>
+        options.UseCosmos(cosmosConnectionString, databaseName));
+}
+
+// Configure Azure Blob Storage
+if (useAspire)
+{
+    // Aspire will inject the connection string
+    // Connection name matches the resource name in AppHost.cs
+    builder.AddAzureBlobClient("blobs");
+}
+else
+{
+    // Standalone mode - use direct connection string
+    var blobConnectionString = builder.Configuration.GetConnectionString("BlobStorage") 
+        ?? Environment.GetEnvironmentVariable("BLOB_STORAGE_CONNECTION_STRING");
+    
+    if (string.IsNullOrEmpty(blobConnectionString))
+    {
+        throw new InvalidOperationException("Blob Storage connection string is required. Set ConnectionStrings:BlobStorage or BLOB_STORAGE_CONNECTION_STRING environment variable.");
+    }
+    
+    builder.Services.AddSingleton(new Azure.Storage.Blobs.BlobServiceClient(blobConnectionString));
+}
+
 
 builder.Services.AddScoped<UserStore>();
 builder.Services.AddScoped<HouseholdStore>();
@@ -31,9 +88,10 @@ builder.Services.AddSingleton<PasswordHasher>();
 builder.Services.AddScoped<AuthenticationService>();
 builder.Services.AddScoped<ApplicationContext>();
 builder.Services.AddScoped<JwtTokenService>();
+builder.Services.AddSingleton<BlobStorageService>();
 
 // Configure JWT Authentication
-var jwtKey = builder.Configuration["Jwt:Key"]!;
+var jwtKey = builder.Configuration["Jwt:Key"] ?? Environment.GetEnvironmentVariable("JWT_SECRET_KEY") ?? "WhatIsInMyFridge-SuperSecretKey-ChangeInProduction-MinimumLength32Characters!";
 var jwtIssuer = builder.Configuration["Jwt:Issuer"]!;
 var jwtAudience = builder.Configuration["Jwt:Audience"]!;
 
@@ -58,6 +116,22 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
+// Add CORS for custom domain
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        policy.WithOrigins(
+                "http://localhost:5173",
+                "https://fridge.colen.at",
+                "https://colen.at"
+              )
+              .AllowAnyMethod()
+              .AllowAnyHeader()
+              .AllowCredentials();
+    });
+});
+
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
@@ -71,11 +145,11 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-// Apply migrations on startup
+// Ensure Cosmos DB database is created
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    dbContext.Database.Migrate();
+    await dbContext.Database.EnsureCreatedAsync();
 }
 
 // Exception handling middleware - serialize exceptions in debug mode
@@ -301,14 +375,16 @@ app.MapPost("/api/households/{householdId}/switch", async Task<IResult> (string 
     }
 
     var user = await userStore.GetByIdAsync(userId);
-    if (user != null)
+    if (user == null)
     {
-        user.CurrentHouseholdId = householdId;
-        await userStore.UpdateAsync(user);
+        return Results.Unauthorized();
     }
 
+    user.CurrentHouseholdId = householdId;
+    await userStore.UpdateAsync(user);
+
     // Generate a new token with the updated household
-    var token = jwtTokenService.GenerateToken(userId, householdId);
+    var token = jwtTokenService.GenerateToken(userId, householdId, user.IsAdmin);
 
     return Results.Ok(new { token, household });
 }).RequireAuthorization();
@@ -589,7 +665,7 @@ app.MapGet("/api/ingredients/suggestions", async Task<IResult> (string? query, H
 }).RequireAuthorization();
 
 // Photo upload endpoint
-app.MapPost("/api/recipes/{id}/photos", async Task<IResult> (string id, IFormFile file, HttpContext httpContext, RecipeStore store) =>
+app.MapPost("/api/recipes/{id}/photos", async Task<IResult> (string id, IFormFile file, HttpContext httpContext, RecipeStore store, BlobStorageService blobStorage) =>
 {
     var householdId = httpContext.User.FindFirst("householdId")?.Value;
     if (string.IsNullOrEmpty(householdId))
@@ -625,20 +701,15 @@ app.MapPost("/api/recipes/{id}/photos", async Task<IResult> (string id, IFormFil
         return Results.BadRequest(new { error = "Invalid file type. Only JPEG, PNG, and WebP images are allowed" });
     }
 
-    // Create photos directory
-    var photosDir = Path.Combine(dataDir, "photos");
-    Directory.CreateDirectory(photosDir);
-
     // Generate unique filename
     var extension = Path.GetExtension(file.FileName);
     var photoId = Guid.NewGuid().ToString("N");
     var fileName = $"{photoId}{extension}";
-    var filePath = Path.Combine(photosDir, fileName);
 
-    // Save file
-    using (var stream = new FileStream(filePath, FileMode.Create))
+    // Upload to blob storage or local filesystem
+    using (var stream = file.OpenReadStream())
     {
-        await file.CopyToAsync(stream);
+        await blobStorage.UploadPhotoAsync(stream, fileName, file.ContentType);
     }
 
     // Update recipe
@@ -650,7 +721,7 @@ app.MapPost("/api/recipes/{id}/photos", async Task<IResult> (string id, IFormFil
 }).RequireAuthorization().DisableAntiforgery();
 
 // Delete photo endpoint
-app.MapDelete("/api/recipes/{id}/photos/{photoId}", async Task<IResult> (string id, string photoId, HttpContext httpContext, RecipeStore store) =>
+app.MapDelete("/api/recipes/{id}/photos/{photoId}", async Task<IResult> (string id, string photoId, HttpContext httpContext, RecipeStore store, BlobStorageService blobStorage) =>
 {
     var householdId = httpContext.User.FindFirst("householdId")?.Value;
     if (string.IsNullOrEmpty(householdId))
@@ -669,13 +740,8 @@ app.MapDelete("/api/recipes/{id}/photos/{photoId}", async Task<IResult> (string 
         return Results.NotFound();
     }
 
-    // Delete file
-    var photosDir = Path.Combine(dataDir, "photos");
-    var matchingFiles = Directory.GetFiles(photosDir, $"{photoId}.*");
-    foreach (var file in matchingFiles)
-    {
-        File.Delete(file);
-    }
+    // Delete photo from blob storage or filesystem
+    await blobStorage.DeletePhotoAsync(photoId);
 
     // Update recipe
     recipe.Photos.Remove(photoId);
@@ -686,27 +752,15 @@ app.MapDelete("/api/recipes/{id}/photos/{photoId}", async Task<IResult> (string 
 }).RequireAuthorization();
 
 // Serve photo files
-app.MapGet("/api/photos/{fileName}", async Task<IResult> (string fileName) =>
+app.MapGet("/api/photos/{fileName}", async Task<IResult> (string fileName, BlobStorageService blobStorage) =>
 {
-    var photosDir = Path.Combine(dataDir, "photos");
-    var filePath = Path.Combine(photosDir, fileName);
-
-    if (!File.Exists(filePath))
+    var photoData = await blobStorage.GetPhotoAsync(fileName);
+    if (photoData == null)
     {
         return Results.NotFound();
     }
 
-    var extension = Path.GetExtension(fileName).ToLowerInvariant();
-    var contentType = extension switch
-    {
-        ".jpg" or ".jpeg" => "image/jpeg",
-        ".png" => "image/png",
-        ".webp" => "image/webp",
-        _ => "application/octet-stream"
-    };
-
-    var fileBytes = await File.ReadAllBytesAsync(filePath);
-    return Results.File(fileBytes, contentType);
+    return Results.File(photoData.Value.fileBytes, photoData.Value.contentType);
 });
 
 // Grocery list endpoints
@@ -790,6 +844,68 @@ app.MapDelete("/api/grocery/purchased", async Task<IResult> (HttpContext httpCon
 
     await store.ClearPurchasedAsync(householdId);
     return Results.NoContent();
+}).RequireAuthorization();
+
+// Admin endpoints
+app.MapGet("/api/admin/users", async Task<IResult> (HttpContext httpContext, UserStore userStore) =>
+{
+    var userId = httpContext.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    if (string.IsNullOrEmpty(userId))
+    {
+        return Results.Unauthorized();
+    }
+
+    var currentUser = await userStore.GetByIdAsync(userId);
+    if (currentUser == null || !currentUser.IsAdmin)
+    {
+        return Results.Forbid();
+    }
+
+    var users = await userStore.GetAllUsersAsync();
+    
+    // Return user list without password hashes
+    var userList = users.Select(u => new
+    {
+        u.Id,
+        u.Email,
+        u.Name,
+        u.IsAdmin,
+        u.CreatedAt,
+        u.UpdatedAt
+    });
+
+    return Results.Ok(userList);
+}).RequireAuthorization();
+
+app.MapPost("/api/admin/users/{id}/reset-password", async Task<IResult> (string id, ResetPasswordRequest request, HttpContext httpContext, UserStore userStore, PasswordHasher passwordHasher) =>
+{
+    var userId = httpContext.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    if (string.IsNullOrEmpty(userId))
+    {
+        return Results.Unauthorized();
+    }
+
+    var currentUser = await userStore.GetByIdAsync(userId);
+    if (currentUser == null || !currentUser.IsAdmin)
+    {
+        return Results.Forbid();
+    }
+
+    if (!Validate(request, out var errors))
+    {
+        return Results.ValidationProblem(errors);
+    }
+
+    var targetUser = await userStore.GetByIdAsync(id);
+    if (targetUser == null)
+    {
+        return Results.NotFound();
+    }
+
+    targetUser.PasswordHash = passwordHasher.HashPassword(request.NewPassword);
+    await userStore.UpdateAsync(targetUser);
+
+    return Results.Ok(new { message = "Password reset successfully" });
 }).RequireAuthorization();
 
 app.Run();

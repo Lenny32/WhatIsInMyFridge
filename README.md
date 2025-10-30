@@ -1,30 +1,59 @@
 # Food Management System
 
-This repository hosts a food inventory manager that keeps pantry, fridge, and freezer items in sync. The backend is a .NET minimal API that persists inventory to JSON, and the frontend is a Svelte experience powered entirely by Deno tasks—no npm install required.
+This repository hosts a food inventory manager that keeps pantry, fridge, and freezer items in sync. The backend is a .NET minimal API using Azure Cosmos DB and Azure Blob Storage (with local emulator support), and the frontend is a Svelte experience powered entirely by Deno tasks—no npm install required.
 
 ## Project layout
 
-- `backend/WhatIsInMyFridge.Api/` – ASP.NET Core minimal API with JSON storage (`backend/data/items.json`).
+- `backend/WhatIsInMyFridge.Api/` – ASP.NET Core minimal API with Cosmos DB and Blob Storage.
+- `backend/WhatIsInMyFridge.AppHost/` – .NET Aspire orchestration for local development.
+- `backend/WhatIsInMyFridge.ServiceDefaults/` – Shared Aspire configuration.
 - `frontend/` – Svelte + Vite project driven by `deno.json` tasks.
 - `.gitignore` – ignores .NET build folders, dist artifacts, and local env files.
 
 ## Getting started
 
-1. **Run the API**
-   ```bash
-   dotnet run --project backend/WhatIsInMyFridge.Api
-   ```
-   The API serves HTTP on `http://localhost:5000` (health check at `/health`).
+### Quick Start (Using .NET Aspire - Recommended)
 
-2. **Start the frontend (Deno)**
+1. **Prerequisites**
+   - [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0)
+   - [Deno](https://deno.land/)
+   - [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+
+2. **Run with Aspire AppHost** (starts all services and emulators)
+   ```bash
+   dotnet run --project backend/WhatIsInMyFridge.AppHost
+   ```
+   This automatically:
+   - Starts Cosmos DB emulator
+   - Starts Azurite (Blob Storage emulator)
+   - Starts the API
+   - Opens the Aspire dashboard
+
+3. **Start the frontend** (in a separate terminal)
    ```bash
    cd frontend
    deno task dev
    ```
-   Vite serves the UI on `http://localhost:5173` and proxies `/api` to the backend.
+   Visit `http://localhost:5173` to use the application.
 
-3. **Optional configuration**
-   - Copy `frontend/.env.example` to `frontend/.env` and adjust `VITE_API_BASE` if the API runs on another host or port.
+For detailed setup instructions, emulator configuration, and troubleshooting, see **[LOCAL_DEVELOPMENT.md](LOCAL_DEVELOPMENT.md)**.
+
+### Manual Startup (Advanced)
+
+If you need to run services individually:
+
+1. **Ensure emulators are running** (Cosmos DB and Azurite)
+2. **Run the API**
+   ```bash
+   dotnet run --project backend/WhatIsInMyFridge.Api
+   ```
+3. **Start the frontend**
+   ```bash
+   cd frontend
+   deno task dev
+   ```
+
+See [LOCAL_DEVELOPMENT.md](LOCAL_DEVELOPMENT.md) for complete manual setup instructions.
 
 ## API overview
 

@@ -1,0 +1,17 @@
+**/.git
+**/.gitignore
+**/.vscode
+**/bin
+**/obj
+**/data
+**/.vs
+**/node_modules
+**/frontend
+**/.vite
+**/*.log
+**/*.md
+**/.env
+**/.env.local
+**/dist
+**/Dockerfile
+**/.dockerignore

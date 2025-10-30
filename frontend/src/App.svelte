@@ -7,9 +7,10 @@
   import Inventory from "./lib/Inventory.svelte";
   import Recipes from "./lib/Recipes.svelte";
   import GroceryList from "./lib/GroceryList.svelte";
+  import Admin from "./lib/Admin.svelte";
 
   let authView: "login" | "register" = "login";
-  let currentView: "inventory" | "recipes" | "grocery" = "inventory";
+  let currentView: "inventory" | "recipes" | "grocery" | "admin" = "inventory";
 
   onMount(async () => {
     const token = localStorage.getItem("auth_token");
@@ -41,6 +42,7 @@
 
   $: userName = $authStore.user?.name || "User";
   $: householdName = $authStore.household?.name || "Household";
+  $: isAdmin = $authStore.user?.isAdmin || false;
 </script>
 
 {#if $authStore.isLoading}
@@ -92,14 +94,25 @@
       >
         Grocery List
       </button>
+      {#if isAdmin}
+        <button 
+          class="nav-btn" 
+          class:active={currentView === "admin"}
+          on:click={() => currentView = "admin"}
+        >
+          Admin
+        </button>
+      {/if}
     </nav>
     
     {#if currentView === "inventory"}
       <Inventory />
     {:else if currentView === "recipes"}
       <Recipes />
-    {:else}
+    {:else if currentView === "grocery"}
       <GroceryList />
+    {:else if currentView === "admin"}
+      <Admin />
     {/if}
   </div>
 {/if}

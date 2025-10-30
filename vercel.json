@@ -1,0 +1,11 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "cd frontend && deno task build",
+  "outputDirectory": "frontend/dist",
+  "devCommand": "cd frontend && deno task dev",
+  "installCommand": "echo 'Using Deno'",
+  "framework": "vite",
+  "env": {
+    "VITE_API_BASE": "@api_url"
+  }
+}

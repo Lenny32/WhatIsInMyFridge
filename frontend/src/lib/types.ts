@@ -37,6 +37,7 @@ export interface User {
   name: string;
   householdIds: string[];
   currentHouseholdId?: string | null;
+  isAdmin: boolean;
 }
 
 export interface Household {

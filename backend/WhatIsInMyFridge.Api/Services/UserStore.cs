@@ -40,4 +40,11 @@ public sealed class UserStore
         await _context.SaveChangesAsync();
         return user;
     }
+
+    public async Task<List<User>> GetAllUsersAsync()
+    {
+        return await _context.Users
+            .OrderBy(u => u.Email)
+            .ToListAsync();
+    }
 }

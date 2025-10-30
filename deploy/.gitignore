@@ -1,0 +1,11 @@
+# Deployment artifacts
+deployment-output.json
+deploy.zip
+
+# Local parameters with secrets
+*.local.json
+*.local.parameters.json
+local.parameters.json
+
+# Azure CLI cache
+.azure/

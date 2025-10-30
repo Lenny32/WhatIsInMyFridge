@@ -1,0 +1,79 @@
+{
+  "hash": "86b14701",
+  "configHash": "ec0c68dc",
+  "lockfileHash": "e3b0c442",
+  "browserHash": "3590ccc5",
+  "optimized": {
+    "svelte/animate": {
+      "src": "../../node_modules/.deno/svelte@4.2.20/node_modules/svelte/src/runtime/animate/index.js",
+      "file": "svelte_animate.js",
+      "fileHash": "46745592",
+      "needsInterop": false
+    },
+    "svelte/easing": {
+      "src": "../../node_modules/.deno/svelte@4.2.20/node_modules/svelte/src/runtime/easing/index.js",
+      "file": "svelte_easing.js",
+      "fileHash": "ba150960",
+      "needsInterop": false
+    },
+    "svelte/internal": {
+      "src": "../../node_modules/.deno/svelte@4.2.20/node_modules/svelte/src/runtime/internal/index.js",
+      "file": "svelte_internal.js",
+      "fileHash": "790ea8c4",
+      "needsInterop": false
+    },
+    "svelte/internal/disclose-version": {
+      "src": "../../node_modules/.deno/svelte@4.2.20/node_modules/svelte/src/runtime/internal/disclose-version/index.js",
+      "file": "svelte_internal_disclose-version.js",
+      "fileHash": "ed1fc47c",
+      "needsInterop": false
+    },
+    "svelte/motion": {
+      "src": "../../node_modules/.deno/svelte@4.2.20/node_modules/svelte/src/runtime/motion/index.js",
+      "file": "svelte_motion.js",
+      "fileHash": "032ba789",
+      "needsInterop": false
+    },
+    "svelte/store": {
+      "src": "../../node_modules/.deno/svelte@4.2.20/node_modules/svelte/src/runtime/store/index.js",
+      "file": "svelte_store.js",
+      "fileHash": "c7b0d9b8",
+      "needsInterop": false
+    },
+    "svelte/transition": {
+      "src": "../../node_modules/.deno/svelte@4.2.20/node_modules/svelte/src/runtime/transition/index.js",
+      "file": "svelte_transition.js",
+      "fileHash": "d51b6c94",
+      "needsInterop": false
+    },
+    "svelte": {
+      "src": "../../node_modules/.deno/svelte@4.2.20/node_modules/svelte/src/runtime/index.js",
+      "file": "svelte.js",
+      "fileHash": "34d7faba",
+      "needsInterop": false
+    },
+    "openapi-fetch": {
+      "src": "../../node_modules/.deno/openapi-fetch@0.12.5/node_modules/openapi-fetch/dist/index.js",
+      "file": "openapi-fetch.js",
+      "fileHash": "c2e291fe",
+      "needsInterop": false
+    }
+  },
+  "chunks": {
+    "chunk-WC3MPFB7": {
+      "file": "chunk-WC3MPFB7.js"
+    },
+    "chunk-Y5FWEU4D": {
+      "file": "chunk-Y5FWEU4D.js"
+    },
+    "chunk-ZBMT5M6T": {
+      "file": "chunk-ZBMT5M6T.js"
+    },
+    "chunk-EHXDX42D": {
+      "file": "chunk-EHXDX42D.js"
+    },
+    "chunk-V6TY7KAL": {
+      "file": "chunk-V6TY7KAL.js"
+    }
+  }
+}
