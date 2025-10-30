@@ -6,7 +6,6 @@ public sealed class GroceryItem
     public string HouseholdId { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public decimal? Quantity { get; set; }
-    public MeasurementUnit? Unit { get; set; }
     public FoodCategory Category { get; set; } = FoodCategory.Undefined;
     public string? Notes { get; set; }
     public bool IsPurchased { get; set; } = false;

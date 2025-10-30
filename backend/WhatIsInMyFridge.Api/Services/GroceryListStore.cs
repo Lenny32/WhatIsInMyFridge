@@ -38,7 +38,6 @@ public sealed class GroceryListStore
             HouseholdId = householdId,
             Name = request.Name.Trim(),
             Quantity = request.Quantity,
-            Unit = request.Unit,
             Category = request.Category,
             Notes = request.Notes?.Trim(),
             IsPurchased = false,
@@ -58,7 +57,6 @@ public sealed class GroceryListStore
 
         existing.Name = request.Name is { Length: > 0 } name ? name.Trim() : existing.Name;
         existing.Quantity = request.Quantity ?? existing.Quantity;
-        existing.Unit = request.Unit ?? existing.Unit;
         existing.Category = request.Category ?? existing.Category;
         existing.Notes = request.Notes is { Length: > 0 } notes ? notes.Trim() : request.Notes == string.Empty ? null : existing.Notes;
         existing.IsPurchased = request.IsPurchased ?? existing.IsPurchased;

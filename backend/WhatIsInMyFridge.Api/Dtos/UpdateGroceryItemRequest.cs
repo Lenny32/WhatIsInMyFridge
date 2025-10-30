@@ -11,8 +11,6 @@ public sealed class UpdateGroceryItemRequest
     [Range(0, double.MaxValue)]
     public decimal? Quantity { get; set; }
 
-    public MeasurementUnit? Unit { get; set; }
-
     public FoodCategory? Category { get; set; }
 
     [StringLength(500)]

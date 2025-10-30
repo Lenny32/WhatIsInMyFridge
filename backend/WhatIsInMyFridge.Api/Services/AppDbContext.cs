@@ -114,8 +114,6 @@ public sealed class AppDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.Property(e => e.HouseholdId).IsRequired();
             entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
-            entity.Property(e => e.Unit)
-                .HasConversion<string>();
             entity.Property(e => e.Category)
                 .HasConversion<string>();
             entity.Property(e => e.Notes).HasMaxLength(500);

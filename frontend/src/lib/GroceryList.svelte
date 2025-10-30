@@ -3,67 +3,40 @@
   import { apiClient } from './api';
   import type { components } from './api-types';
 
-  type GroceryItem = components['schemas']['GroceryItem'];
   type FoodCategory = components['schemas']['FoodCategory'];
-  type MeasurementUnit = components['schemas']['MeasurementUnit'];
+
+  interface GroceryItem {
+    id: string;
+    householdId: string;
+    name: string;
+    quantity?: number | null;
+    category: FoodCategory;
+    notes?: string | null;
+    isPurchased: boolean;
+    createdAt: string;
+    updatedAt: string;
+  }
 
   let groceryItems: GroceryItem[] = [];
   let newItemName = '';
   let newItemQuantity = '';
-  let newItemUnit: MeasurementUnit | '' = '';
-  let newItemCategory: FoodCategory = 'other';
+  let newItemCategory: FoodCategory = 'Other';
   let newItemNotes = '';
   let loading = false;
   let error = '';
 
   const categories: FoodCategory[] = [
-    'fruit',
-    'vegetable',
-    'meat',
-    'dairy',
-    'grain',
-    'condiment',
-    'beverage',
-    'snack',
-    'frozen',
-    'other'
+    'Fruits',
+    'Vegetables',
+    'Meat',
+    'Dairy',
+    'Bread',
+    'Condiments',
+    'Beverages',
+    'Snacks',
+    'FrozenMeals',
+    'Other'
   ];
-
-  const units: (MeasurementUnit | '')[] = [
-    '',
-    'piece',
-    'lb',
-    'oz',
-    'kg',
-    'g',
-    'cup',
-    'tbsp',
-    'tsp',
-    'ml',
-    'l',
-    'gallon',
-    'quart',
-    'pint',
-    'fl_oz'
-  ];
-
-  const unitLabels: Record<string, string> = {
-    '': '(none)',
-    piece: 'piece(s)',
-    lb: 'lb',
-    oz: 'oz',
-    kg: 'kg',
-    g: 'g',
-    cup: 'cup(s)',
-    tbsp: 'tbsp',
-    tsp: 'tsp',
-    ml: 'ml',
-    l: 'L',
-    gallon: 'gallon(s)',
-    quart: 'quart(s)',
-    pint: 'pint(s)',
-    fl_oz: 'fl oz'
-  };
 
   onMount(() => {
     loadGroceryItems();
@@ -78,7 +51,7 @@
         error = 'Failed to load grocery list';
         console.error(apiError);
       } else {
-        groceryItems = data || [];
+        groceryItems = (data as any) || [];
       }
     } catch (err) {
       error = 'Failed to load grocery list';
@@ -94,11 +67,11 @@
     loading = true;
     error = '';
     try {
+      const quantityValue = newItemQuantity.trim() ? parseFloat(newItemQuantity.trim()) : null;
       const { data, error: apiError } = await apiClient.POST('/api/grocery', {
         body: {
           name: newItemName.trim(),
-          quantity: newItemQuantity.trim() || null,
-          unit: newItemUnit || null,
+          quantity: quantityValue,
           category: newItemCategory,
           notes: newItemNotes.trim() || null
         }
@@ -108,12 +81,11 @@
         error = 'Failed to add item';
         console.error(apiError);
       } else if (data) {
-        groceryItems = [...groceryItems, data];
+        groceryItems = [...groceryItems, data as any];
         // Reset form
         newItemName = '';
         newItemQuantity = '';
-        newItemUnit = '';
-        newItemCategory = 'other';
+        newItemCategory = 'Other';
         newItemNotes = '';
       }
     } catch (err) {
@@ -137,7 +109,7 @@
         error = 'Failed to update item';
         console.error(apiError);
       } else if (data) {
-        groceryItems = groceryItems.map(i => i.id === item.id ? data : i);
+        groceryItems = groceryItems.map(i => i.id === item.id ? (data as any) : i);
       }
     } catch (err) {
       error = 'Failed to update item';
@@ -192,13 +164,7 @@
   }
 
   function formatQuantity(item: GroceryItem): string {
-    if (!item.quantity && !item.unit) return '';
-    if (item.quantity && item.unit) {
-      return `${item.quantity} ${unitLabels[item.unit] || item.unit}`;
-    }
-    if (item.quantity) return item.quantity;
-    if (item.unit) return unitLabels[item.unit] || item.unit;
-    return '';
+    return item.quantity ? String(item.quantity) : '';
   }
 
   $: unpurchasedCount = groceryItems.filter(i => !i.isPurchased).length;
@@ -224,17 +190,13 @@
           required
         />
         <input
-          type="text"
+          type="number"
+          step="any"
           placeholder="Quantity (optional)"
           bind:value={newItemQuantity}
           disabled={loading}
-          style="max-width: 120px;"
+          style="max-width: 200px;"
         />
-        <select bind:value={newItemUnit} disabled={loading} style="max-width: 120px;">
-          {#each units as unit}
-            <option value={unit}>{unitLabels[unit] || unit}</option>
-          {/each}
-        </select>
       </div>
       <div class="form-row">
         <select bind:value={newItemCategory} disabled={loading}>
