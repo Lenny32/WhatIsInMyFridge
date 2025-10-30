@@ -1,17 +1,16 @@
-name: Deploy Backend
+name: Deploy Frontend
 
 on:
   push:
     branches: [ main ]
     paths:
-      - 'backend/**'
-      - 'Dockerfile'
-      - '.github/workflows/deploy-backend.yml'
+      - 'frontend/**'
+      - '.github/workflows/deploy-frontend.yml'
   workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}/api
+  IMAGE_NAME: ${{ github.repository }}/web
 
 jobs:
   build-and-push:
@@ -51,16 +50,16 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}
             type=raw,value=latest,enable={{is_default_branch}}
           labels: |
-            org.opencontainers.image.title=WhatIsInMyFridge API
-            org.opencontainers.image.description=Backend API for WhatIsInMyFridge application
+            org.opencontainers.image.title=WhatIsInMyFridge Web
+            org.opencontainers.image.description=Frontend web application for WhatIsInMyFridge
             org.opencontainers.image.vendor=WhatIsInMyFridge
 
       - name: Build and push Docker image
         id: build
         uses: docker/build-push-action@v5
         with:
-          context: .
-          file: ./Dockerfile
+          context: ./frontend
+          file: ./frontend/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -76,22 +75,14 @@ jobs:
           subject-digest: ${{ steps.build.outputs.digest }}
           push-to-registry: true
 
-  deploy-to-azure:
-    name: Deploy to Azure Container Apps
-    needs: build-and-push
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    
-    steps:
-      - name: Log in to Azure
-        uses: azure/login@v2
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-      - name: Deploy to Container Apps
+      - name: Image summary
         run: |
-          az containerapp update \
-            --name whatsinmyfridge-api \
-            --resource-group whatsinmyfridge-rg \
-            --image ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest \
-            --revision-suffix $(date +%Y%m%d%H%M%S)
+          echo "### 🎉 Frontend Image Published!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Registry:** ${{ env.REGISTRY }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Image:** ${{ env.IMAGE_NAME }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Tags:**" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "${{ steps.meta.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "**Digest:** \`${{ steps.build.outputs.digest }}\`" >> $GITHUB_STEP_SUMMARY

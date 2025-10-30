@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  # Backend API
+  api:
+    image: ghcr.io/${GITHUB_REPOSITORY}/api:latest
+    container_name: whatsinmyfridge-api
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=/app/data/fridge.db
+    volumes:
+      - api-data:/app/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - fridge-network
+
+  # Frontend Web
+  web:
+    image: ghcr.io/${GITHUB_REPOSITORY}/web:latest
+    container_name: whatsinmyfridge-web
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      - VITE_API_BASE=http://api:8080
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - fridge-network
+
+volumes:
+  api-data:
+    driver: local
+
+networks:
+  fridge-network:
+    driver: bridge

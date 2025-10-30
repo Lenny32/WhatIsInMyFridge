@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  # Backend API (local build)
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: whatsinmyfridge-api-dev
+    restart: unless-stopped
+    ports:
+      - "5000:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=/app/data/fridge.db
+    volumes:
+      - ./backend/data:/app/data
+    networks:
+      - fridge-network
+
+  # Frontend Web (local build)
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: whatsinmyfridge-web-dev
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    depends_on:
+      - api
+    networks:
+      - fridge-network
+
+networks:
+  fridge-network:
+    driver: bridge
