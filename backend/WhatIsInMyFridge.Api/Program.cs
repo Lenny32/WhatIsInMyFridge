@@ -78,6 +78,48 @@ using (var scope = app.Services.CreateScope())
     dbContext.Database.Migrate();
 }
 
+// Exception handling middleware - serialize exceptions in debug mode
+if (app.Environment.IsDevelopment())
+{
+    app.Use(async (context, next) =>
+    {
+        try
+        {
+            await next(context);
+        }
+        catch (Exception ex)
+        {
+            context.Response.StatusCode = 500;
+            context.Response.ContentType = "application/json";
+
+            var errorResponse = new ErrorResponse
+            {
+                Type = ex.GetType().FullName ?? "UnknownException",
+                Message = ex.Message,
+                StackTrace = ex.StackTrace,
+                Source = ex.Source,
+                InnerException = ex.InnerException != null
+                    ? new ErrorResponse
+                    {
+                        Type = ex.InnerException.GetType().FullName ?? "UnknownException",
+                        Message = ex.InnerException.Message,
+                        StackTrace = ex.InnerException.StackTrace,
+                        Source = ex.InnerException.Source
+                    }
+                    : null
+            };
+
+            var json = JsonSerializer.Serialize(errorResponse, new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                WriteIndented = true
+            });
+
+            await context.Response.WriteAsync(json);
+        }
+    });
+}
+
 app.UseSwagger();
 app.UseSwaggerUI();
 
@@ -85,6 +127,15 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
+
+// Debug test endpoint - only available in development
+if (app.Environment.IsDevelopment())
+{
+    app.MapGet("/api/debug/throw-exception", () =>
+    {
+        throw new InvalidOperationException("This is a test exception to verify debug mode exception serialization");
+    });
+}
 
 // Authentication endpoints
 app.MapPost("/api/auth/register", async Task<IResult> (RegisterRequest request, AuthenticationService authService, JwtTokenService jwtTokenService) =>

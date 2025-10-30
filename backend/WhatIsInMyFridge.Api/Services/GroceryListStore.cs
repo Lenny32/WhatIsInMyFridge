@@ -15,11 +15,14 @@ public sealed class GroceryListStore
 
     public async Task<IReadOnlyCollection<GroceryItem>> GetAllAsync(string householdId)
     {
-        return await _context.GroceryItems
+        var items = await _context.GroceryItems
             .Where(item => item.HouseholdId == householdId)
+            .ToArrayAsync();
+        
+        return items
             .OrderBy(item => item.IsPurchased)
             .ThenByDescending(item => item.CreatedAt)
-            .ToArrayAsync();
+            .ToArray();
     }
 
     public async Task<GroceryItem?> GetByIdAsync(string id)

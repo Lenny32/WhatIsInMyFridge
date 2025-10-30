@@ -5,6 +5,18 @@ import type { paths } from "./api-types";
 
 const API_BASE = "";
 
+/**
+ * Debug error information attached to errors when the backend is running in development mode.
+ * This includes full exception details including stack traces from the .NET backend.
+ */
+export interface DebugErrorInfo {
+  type: string;
+  message: string;
+  stackTrace?: string;
+  source?: string;
+  innerException?: DebugErrorInfo;
+}
+
 // Type-safe API client for new endpoints
 export const apiClient = createClient<paths>({ baseUrl: API_BASE });
 
@@ -35,13 +47,22 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
   if (!response.ok) {
     let message = "Request failed";
+    let debugInfo: any = null;
+    
     try {
       const text = await response.text();
       if (text) {
         // Try to parse as JSON first
         try {
           const json = JSON.parse(text);
-          message = json.error || json.title || text;
+          
+          // Check if this is a debug exception response
+          if (json.type && json.message && json.stackTrace) {
+            debugInfo = json;
+            message = json.message;
+          } else {
+            message = json.error || json.title || text;
+          }
         } catch {
           message = text;
         }
@@ -51,7 +72,36 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     } catch {
       message = `Request failed with status ${response.status}`;
     }
-    throw new Error(message);
+    
+    const error: any = new Error(message);
+    if (debugInfo) {
+      error.debugInfo = debugInfo;
+      
+      // Always log detailed exception to console when debug info is available
+      console.group('%c🐛 API Exception Details', 'color: #ff6b6b; font-weight: bold; font-size: 14px;');
+      console.error('%cType:', 'font-weight: bold;', debugInfo.type);
+      console.error('%cMessage:', 'font-weight: bold;', debugInfo.message);
+      if (debugInfo.source) {
+        console.error('%cSource:', 'font-weight: bold;', debugInfo.source);
+      }
+      if (debugInfo.stackTrace) {
+        console.error('%cStack Trace:', 'font-weight: bold;');
+        console.error(debugInfo.stackTrace);
+      }
+      if (debugInfo.innerException) {
+        console.group('%cInner Exception:', 'font-weight: bold; color: #ffa94d;');
+        console.error('%cType:', 'font-weight: bold;', debugInfo.innerException.type);
+        console.error('%cMessage:', 'font-weight: bold;', debugInfo.innerException.message);
+        if (debugInfo.innerException.stackTrace) {
+          console.error('%cStack Trace:', 'font-weight: bold;');
+          console.error(debugInfo.innerException.stackTrace);
+        }
+        console.groupEnd();
+      }
+      console.groupEnd();
+    }
+    
+    throw error;
   }
 
   if (response.status === 204 || response.headers.get('content-length') === '0') {
@@ -176,13 +226,51 @@ export async function uploadRecipePhoto(recipeId: string, file: File): Promise<{
 
   if (!response.ok) {
     let message = "Failed to upload photo";
+    let debugInfo: any = null;
+    
     try {
       const json = await response.json();
-      message = json.error || json.title || message;
+      
+      // Check if this is a debug exception response
+      if (json.type && json.message && json.stackTrace) {
+        debugInfo = json;
+        message = json.message;
+      } else {
+        message = json.error || json.title || message;
+      }
     } catch {
       message = `Upload failed with status ${response.status}`;
     }
-    throw new Error(message);
+    
+    const error: any = new Error(message);
+    if (debugInfo) {
+      error.debugInfo = debugInfo;
+      
+      // Log detailed exception to console when debug info is available
+      console.group('%c🐛 Photo Upload Exception Details', 'color: #ff6b6b; font-weight: bold; font-size: 14px;');
+      console.error('%cType:', 'font-weight: bold;', debugInfo.type);
+      console.error('%cMessage:', 'font-weight: bold;', debugInfo.message);
+      if (debugInfo.source) {
+        console.error('%cSource:', 'font-weight: bold;', debugInfo.source);
+      }
+      if (debugInfo.stackTrace) {
+        console.error('%cStack Trace:', 'font-weight: bold;');
+        console.error(debugInfo.stackTrace);
+      }
+      if (debugInfo.innerException) {
+        console.group('%cInner Exception:', 'font-weight: bold; color: #ffa94d;');
+        console.error('%cType:', 'font-weight: bold;', debugInfo.innerException.type);
+        console.error('%cMessage:', 'font-weight: bold;', debugInfo.innerException.message);
+        if (debugInfo.innerException.stackTrace) {
+          console.error('%cStack Trace:', 'font-weight: bold;');
+          console.error(debugInfo.innerException.stackTrace);
+        }
+        console.groupEnd();
+      }
+      console.groupEnd();
+    }
+    
+    throw error;
   }
 
   return await response.json();
