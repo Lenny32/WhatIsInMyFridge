@@ -26,6 +26,7 @@ builder.Services.AddScoped<UserStore>();
 builder.Services.AddScoped<HouseholdStore>();
 builder.Services.AddScoped<FoodInventoryStore>();
 builder.Services.AddScoped<RecipeStore>();
+builder.Services.AddScoped<GroceryListStore>();
 builder.Services.AddSingleton<PasswordHasher>();
 builder.Services.AddScoped<AuthenticationService>();
 builder.Services.AddScoped<ApplicationContext>();
@@ -656,6 +657,89 @@ app.MapGet("/api/photos/{fileName}", async Task<IResult> (string fileName) =>
     var fileBytes = await File.ReadAllBytesAsync(filePath);
     return Results.File(fileBytes, contentType);
 });
+
+// Grocery list endpoints
+app.MapGet("/api/grocery", async Task<IResult> (HttpContext httpContext, GroceryListStore store) =>
+{
+    var householdId = httpContext.User.FindFirst("householdId")?.Value;
+    if (string.IsNullOrEmpty(householdId))
+    {
+        return Results.Unauthorized();
+    }
+
+    var items = await store.GetAllAsync(householdId);
+    return Results.Ok(items);
+}).RequireAuthorization();
+
+app.MapPost("/api/grocery", async Task<IResult> (CreateGroceryItemRequest request, HttpContext httpContext, GroceryListStore store) =>
+{
+    var householdId = httpContext.User.FindFirst("householdId")?.Value;
+    if (string.IsNullOrEmpty(householdId))
+    {
+        return Results.Unauthorized();
+    }
+
+    if (!Validate(request, out var errors))
+    {
+        return Results.ValidationProblem(errors);
+    }
+
+    var item = await store.CreateAsync(householdId, request);
+    return Results.Created($"/api/grocery/{item.Id}", item);
+}).RequireAuthorization();
+
+app.MapPatch("/api/grocery/{id}", async Task<IResult> (string id, UpdateGroceryItemRequest request, HttpContext httpContext, GroceryListStore store) =>
+{
+    var householdId = httpContext.User.FindFirst("householdId")?.Value;
+    if (string.IsNullOrEmpty(householdId))
+    {
+        return Results.Unauthorized();
+    }
+
+    if (!Validate(request, out var errors))
+    {
+        return Results.ValidationProblem(errors);
+    }
+
+    var item = await store.GetByIdAsync(id);
+    if (item is null || item.HouseholdId != householdId)
+    {
+        return Results.NotFound();
+    }
+
+    var updated = await store.UpdateAsync(id, request);
+    return updated is null ? Results.NotFound() : Results.Ok(updated);
+}).RequireAuthorization();
+
+app.MapDelete("/api/grocery/{id}", async Task<IResult> (string id, HttpContext httpContext, GroceryListStore store) =>
+{
+    var householdId = httpContext.User.FindFirst("householdId")?.Value;
+    if (string.IsNullOrEmpty(householdId))
+    {
+        return Results.Unauthorized();
+    }
+
+    var item = await store.GetByIdAsync(id);
+    if (item is null || item.HouseholdId != householdId)
+    {
+        return Results.NotFound();
+    }
+
+    var deleted = await store.DeleteAsync(id);
+    return deleted ? Results.NoContent() : Results.NotFound();
+}).RequireAuthorization();
+
+app.MapDelete("/api/grocery/purchased", async Task<IResult> (HttpContext httpContext, GroceryListStore store) =>
+{
+    var householdId = httpContext.User.FindFirst("householdId")?.Value;
+    if (string.IsNullOrEmpty(householdId))
+    {
+        return Results.Unauthorized();
+    }
+
+    await store.ClearPurchasedAsync(householdId);
+    return Results.NoContent();
+}).RequireAuthorization();
 
 app.Run();
 

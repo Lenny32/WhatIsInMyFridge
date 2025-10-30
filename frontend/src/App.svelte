@@ -6,9 +6,10 @@
   import Register from "./lib/Register.svelte";
   import Inventory from "./lib/Inventory.svelte";
   import Recipes from "./lib/Recipes.svelte";
+  import GroceryList from "./lib/GroceryList.svelte";
 
   let authView: "login" | "register" = "login";
-  let currentView: "inventory" | "recipes" = "inventory";
+  let currentView: "inventory" | "recipes" | "grocery" = "inventory";
 
   onMount(async () => {
     const token = localStorage.getItem("auth_token");
@@ -84,12 +85,21 @@
       >
         Recipes
       </button>
+      <button 
+        class="nav-btn" 
+        class:active={currentView === "grocery"}
+        on:click={() => currentView = "grocery"}
+      >
+        Grocery List
+      </button>
     </nav>
     
     {#if currentView === "inventory"}
       <Inventory />
-    {:else}
+    {:else if currentView === "recipes"}
       <Recipes />
+    {:else}
+      <GroceryList />
     {/if}
   </div>
 {/if}

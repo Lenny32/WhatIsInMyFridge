@@ -1,7 +1,22 @@
 import type { CreateFoodItem, FoodItem, StorageLocation, UpdateFoodItem, LoginRequest, RegisterRequest, AuthResponse, User, Household, Recipe, CreateRecipe, UpdateRecipe } from "./types";
 import { getToken } from "./auth";
+import createClient from "openapi-fetch";
+import type { paths } from "./api-types";
 
 const API_BASE = "";
+
+// Type-safe API client for new endpoints
+export const apiClient = createClient<paths>({ baseUrl: API_BASE });
+
+apiClient.use({
+  onRequest({ request }) {
+    const token = getToken();
+    if (token) {
+      request.headers.set("Authorization", `Bearer ${token}`);
+    }
+    return request;
+  },
+});
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const token = getToken();
