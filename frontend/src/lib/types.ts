@@ -1,14 +1,18 @@
-export type StorageLocation = "fridge" | "freezer" | "pantry";
+import type { components } from "./api-types.ts";
+
+export type StorageLocation = "Fridge" | "Freezer" | "Pantry";
+export type FoodCategory = components["schemas"]["FoodCategory"];
+export type MeasurementUnit = components["schemas"]["MeasurementUnit"];
 
 export interface FoodItem {
   id: string;
   name: string;
   location: StorageLocation;
   quantity: number;
-  unit: string;
+  unit: MeasurementUnit;
   restockThreshold: number;
   expiresAt?: string;
-  category?: string | null;
+  category?: FoodCategory | null;
   notes?: string | null;
   createdAt: string;
   updatedAt: string;
@@ -18,10 +22,10 @@ export interface CreateFoodItem {
   name: string;
   location: StorageLocation;
   quantity: number;
-  unit: string;
+  unit: MeasurementUnit;
   restockThreshold: number;
   expiresAt?: string;
-  category?: string;
+  category?: FoodCategory;
   notes?: string;
 }
 

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import type { FoodItem, StorageLocation } from "../lib/types";
+  import type { components } from "../lib/api-types";
   import {
     createItem,
     deleteItem,
@@ -11,9 +12,35 @@
   } from "../lib/api";
   import { authStore } from "../lib/auth";
 
-  const locations: StorageLocation[] = ["fridge", "freezer", "pantry"];
+  type FoodCategory = components["schemas"]["FoodCategory"];
+  type MeasurementUnit = components["schemas"]["MeasurementUnit"];
 
-  let activeLocation: StorageLocation = "fridge";
+  const locations: StorageLocation[] = ["Fridge", "Freezer", "Pantry"];
+
+  const categories: FoodCategory[] = [
+    "Dairy", "Cheese", "Yogurt", "Eggs",
+    "Meat", "Poultry", "Fish", "Seafood",
+    "Vegetables", "Fruits", "Herbs",
+    "Bread", "Pasta", "Rice", "Cereal",
+    "CannedGoods", "Condiments", "Sauces", "Spices", "Oils",
+    "Beverages", "Juice", "Soda",
+    "FrozenMeals", "FrozenVegetables", "FrozenFruits", "IceCream",
+    "Snacks", "Desserts", "Candy",
+    "Leftovers", "PreparedMeals", "Other",
+    "Undefined"
+  ];
+
+  const units: MeasurementUnit[] = [
+    "Pieces", "Items",
+    "Grams", "Kilograms", "Ounces", "Pounds",
+    "Milliliters", "Liters", "FluidOunces",
+    "Cups", "Pints", "Quarts", "Gallons",
+    "Teaspoons", "Tablespoons",
+    "Cans", "Bottles", "Jars", "Boxes", "Bags", "Packages", "Cartons",
+    "Undefined"
+  ];
+
+  let activeLocation: StorageLocation = "Fridge";
   let items: FoodItem[] = [];
   let shoppingList: FoodItem[] = [];
   let loading = false;
@@ -24,10 +51,10 @@
     name: "",
     location: activeLocation,
     quantity: 1,
-    unit: "pcs",
+    unit: "Pieces" as MeasurementUnit,
     restockThreshold: 1,
     expiresAt: "",
-    category: "",
+    category: "Undefined" as FoodCategory,
     notes: ""
   });
 
@@ -88,7 +115,6 @@
         quantity: Number(form.quantity),
         restockThreshold: Number(form.restockThreshold),
         expiresAt: form.expiresAt ? new Date(form.expiresAt).toISOString() : undefined,
-        category: form.category?.trim() || undefined,
         notes: form.notes?.trim() || undefined
       };
       await createItem(payload);
@@ -321,7 +347,11 @@
         </div>
         <div>
           <label for="unit">Unit</label>
-          <input id="unit" bind:value={form.unit} placeholder="packs" required />
+          <select id="unit" bind:value={form.unit} required>
+            {#each units as unit}
+              <option value={unit}>{unit}</option>
+            {/each}
+          </select>
         </div>
         <div>
           <label for="threshold">Restock threshold</label>
@@ -339,7 +369,11 @@
         </div>
         <div>
           <label for="category">Category</label>
-          <input id="category" bind:value={form.category} placeholder="Produce" />
+          <select id="category" bind:value={form.category}>
+            {#each categories as category}
+              <option value={category}>{category}</option>
+            {/each}
+          </select>
         </div>
         <div>
           <label for="notes">Notes</label>
@@ -460,17 +494,18 @@
   
   @media screen and (max-width: 767px) {
     .header-top {
-      flex-direction: column;
+      flex-direction: row;
       gap: 1rem;
-      align-items: stretch;
+      align-items: center;
     }
     
     .user-info {
-      justify-content: center;
+      flex: 1;
     }
     
     .logout-btn {
-      width: 100%;
+      padding: 0.4rem 1rem;
+      font-size: 0.85rem;
     }
     
     .header-content h1 {
