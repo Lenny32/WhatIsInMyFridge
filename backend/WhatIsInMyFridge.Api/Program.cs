@@ -443,10 +443,21 @@ app.MapGet("/api/recipes", async Task<IResult> (HttpContext httpContext, RecipeS
     return Results.Ok(recipes);
 }).RequireAuthorization();
 
-app.MapGet("/api/recipes/{id}", async Task<IResult> (string id, RecipeStore store) =>
+app.MapGet("/api/recipes/{id}", async Task<IResult> (string id, HttpContext httpContext, RecipeStore store) =>
 {
+    var householdId = httpContext.User.FindFirst("householdId")?.Value;
+    if (string.IsNullOrEmpty(householdId))
+    {
+        return Results.Unauthorized();
+    }
+
     var recipe = await store.GetByIdAsync(id);
-    return recipe is null ? Results.NotFound() : Results.Ok(recipe);
+    if (recipe is null || recipe.HouseholdId != householdId)
+    {
+        return Results.NotFound();
+    }
+    
+    return Results.Ok(recipe);
 }).RequireAuthorization();
 
 app.MapPost("/api/recipes", async Task<IResult> (CreateRecipeRequest request, HttpContext httpContext, RecipeStore store) =>
@@ -466,19 +477,43 @@ app.MapPost("/api/recipes", async Task<IResult> (CreateRecipeRequest request, Ht
     return Results.Created($"/api/recipes/{recipe.Id}", recipe);
 }).RequireAuthorization();
 
-app.MapPatch("/api/recipes/{id}", async Task<IResult> (string id, UpdateRecipeRequest request, RecipeStore store) =>
+app.MapPatch("/api/recipes/{id}", async Task<IResult> (string id, UpdateRecipeRequest request, HttpContext httpContext, RecipeStore store) =>
 {
+    var householdId = httpContext.User.FindFirst("householdId")?.Value;
+    if (string.IsNullOrEmpty(householdId))
+    {
+        return Results.Unauthorized();
+    }
+
     if (!Validate(request, out var errors))
     {
         return Results.ValidationProblem(errors);
+    }
+
+    var recipe = await store.GetByIdAsync(id);
+    if (recipe is null || recipe.HouseholdId != householdId)
+    {
+        return Results.NotFound();
     }
 
     var updated = await store.UpdateAsync(id, request);
     return updated is null ? Results.NotFound() : Results.Ok(updated);
 }).RequireAuthorization();
 
-app.MapDelete("/api/recipes/{id}", async Task<IResult> (string id, RecipeStore store) =>
+app.MapDelete("/api/recipes/{id}", async Task<IResult> (string id, HttpContext httpContext, RecipeStore store) =>
 {
+    var householdId = httpContext.User.FindFirst("householdId")?.Value;
+    if (string.IsNullOrEmpty(householdId))
+    {
+        return Results.Unauthorized();
+    }
+
+    var recipe = await store.GetByIdAsync(id);
+    if (recipe is null || recipe.HouseholdId != householdId)
+    {
+        return Results.NotFound();
+    }
+
     var deleted = await store.DeleteAsync(id);
     return deleted ? Results.NoContent() : Results.NotFound();
 }).RequireAuthorization();

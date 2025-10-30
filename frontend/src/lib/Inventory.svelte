@@ -7,10 +7,8 @@
     deleteItem,
     listItems,
     listToBuy,
-    updateItem,
-    logout
+    updateItem
   } from "../lib/api";
-  import { authStore } from "../lib/auth";
 
   type FoodCategory = components["schemas"]["FoodCategory"];
   type MeasurementUnit = components["schemas"]["MeasurementUnit"];
@@ -159,43 +157,15 @@
     if (!item.expiresAt) return false;
     return new Date(item.expiresAt) < new Date();
   }
-
-  async function handleLogout() {
-    try {
-      await logout();
-      authStore.clear();
-    } catch (error) {
-      console.error("Logout failed:", error);
-    }
-  }
-
-  $: userName = $authStore.user?.name || "User";
-  $: householdName = $authStore.household?.name || "Household";
 </script>
 
 <main>
   <header>
-    <div class="header-top">
-      <div class="user-info">
-        <div class="user-avatar">
-          {userName.charAt(0).toUpperCase()}
-        </div>
-        <div class="user-details">
-          <div class="user-name">{userName}</div>
-          <div class="household-badge">{householdName}</div>
-        </div>
-      </div>
-      <button type="button" class="logout-btn" on:click={handleLogout}>
-        Sign Out
-      </button>
-    </div>
-    <div class="header-content">
-      <h1>Food Inventory Manager</h1>
-      <p class="subtitle">
-        Track pantry, freezer, and fridge items. Anything at or below its threshold
-        flows into the shopping list automatically.
-      </p>
-    </div>
+    <h1>Food Inventory Manager</h1>
+    <p class="subtitle">
+      Track pantry, freezer, and fridge items. Anything at or below its threshold
+      flows into the shopping list automatically.
+    </p>
   </header>
 
   <div class="layout">
@@ -409,78 +379,10 @@
 <style>
   header {
     margin-bottom: 2rem;
+    padding: 2rem;
   }
 
-  .header-top {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1rem 1.25rem;
-    background: var(--bg-header);
-    border-radius: 12px;
-    margin-bottom: 1.5rem;
-    box-shadow: var(--shadow-header);
-    border: 1px solid var(--border-secondary);
-  }
-
-  .user-info {
-    display: flex;
-    align-items: center;
-    gap: 0.875rem;
-  }
-
-  .user-avatar {
-    width: 42px;
-    height: 42px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #2f80ed 0%, #1e5bb8 100%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 600;
-    font-size: 1.125rem;
-    color: white;
-    box-shadow: 0 2px 8px rgba(47, 128, 237, 0.3);
-  }
-
-  .user-details {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-  }
-
-  .user-name {
-    font-weight: 600;
-    font-size: 1rem;
-    color: var(--text-primary);
-  }
-
-  .household-badge {
-    font-size: 0.8rem;
-    color: var(--text-tertiary);
-    background: var(--bg-pill);
-    padding: 0.125rem 0.5rem;
-    border-radius: 4px;
-    width: fit-content;
-  }
-
-  .logout-btn {
-    background: var(--bg-button-secondary);
-    border: 1px solid var(--border-primary);
-    color: var(--text-button-secondary);
-    padding: 0.5rem 1.25rem;
-    border-radius: 6px;
-    font-size: 0.9rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s ease;
-  }
-
-  .logout-btn:hover {
-    filter: brightness(1.1);
-  }
-
-  .header-content h1 {
+  h1 {
     font-size: 1.75rem;
     margin-bottom: 0.5rem;
   }
@@ -493,22 +395,11 @@
   }
   
   @media screen and (max-width: 767px) {
-    .header-top {
-      flex-direction: row;
-      gap: 1rem;
-      align-items: center;
+    header {
+      padding: 1.5rem 1rem;
     }
     
-    .user-info {
-      flex: 1;
-    }
-    
-    .logout-btn {
-      padding: 0.4rem 1rem;
-      font-size: 0.85rem;
-    }
-    
-    .header-content h1 {
+    h1 {
       font-size: 1.5rem;
     }
     

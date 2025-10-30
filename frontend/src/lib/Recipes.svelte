@@ -364,7 +364,8 @@
               <h3>Ingredients *</h3>
               {#each form.ingredients as ingredient, i}
                 <div class="ingredient-row">
-                  <div class="ingredient-name">
+                  <div class="ingredient-name ingredient-field">
+                    <label class="mobile-label">Name</label>
                     <input 
                       type="text" 
                       placeholder="Ingredient name" 
@@ -386,24 +387,33 @@
                       </div>
                     {/if}
                   </div>
-                  <input 
-                    type="number" 
-                    placeholder="Qty" 
-                    bind:value={ingredient.quantity} 
-                    min="1" 
-                    step="1"
-                    required 
-                  />
-                  <select bind:value={ingredient.unit} required>
-                    {#each units as unit}
-                      <option value={unit}>{unit}</option>
-                    {/each}
-                  </select>
-                  <input 
-                    type="text" 
-                    placeholder="Notes (optional)" 
-                    bind:value={ingredient.notes}
-                  />
+                  <div class="ingredient-field">
+                    <label class="mobile-label">Quantity</label>
+                    <input 
+                      type="number" 
+                      placeholder="Qty" 
+                      bind:value={ingredient.quantity} 
+                      min="1" 
+                      step="1"
+                      required 
+                    />
+                  </div>
+                  <div class="ingredient-field">
+                    <label class="mobile-label">Unit</label>
+                    <select bind:value={ingredient.unit} required>
+                      {#each units as unit}
+                        <option value={unit}>{unit}</option>
+                      {/each}
+                    </select>
+                  </div>
+                  <div class="ingredient-field">
+                    <label class="mobile-label">Notes</label>
+                    <input 
+                      type="text" 
+                      placeholder="Notes (optional)" 
+                      bind:value={ingredient.notes}
+                    />
+                  </div>
                   <button type="button" class="btn-remove" on:click={() => removeIngredient(i)}>×</button>
                 </div>
               {/each}
@@ -414,13 +424,15 @@
               <h3>Instructions *</h3>
               {#each form.instructions as instruction, i}
                 <div class="instruction-row">
-                  <span class="step-number">{i + 1}.</span>
-                  <textarea 
-                    placeholder="Instruction step" 
-                    bind:value={form.instructions[i]}
-                    rows="2"
-                    required
-                  ></textarea>
+                  <span class="step-number">Step {i + 1}</span>
+                  <div class="instruction-field">
+                    <textarea 
+                      placeholder="Instruction step" 
+                      bind:value={form.instructions[i]}
+                      rows="2"
+                      required
+                    ></textarea>
+                  </div>
                   <button type="button" class="btn-remove" on:click={() => removeInstruction(i)}>×</button>
                 </div>
               {/each}
@@ -770,6 +782,19 @@
     position: relative;
   }
 
+  .ingredient-field {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .mobile-label {
+    display: none;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #6b7280;
+    margin-bottom: 0.25rem;
+  }
+
   .suggestions {
     position: absolute;
     top: 100%;
@@ -805,6 +830,12 @@
     gap: 0.5rem;
     margin-bottom: 0.5rem;
     align-items: start;
+  }
+
+  .instruction-field {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
   }
 
   .step-number {
@@ -912,6 +943,154 @@
 
     .recipes-list {
       max-height: 400px;
+    }
+
+    .detail-panel {
+      max-height: none;
+    }
+  }
+
+  @media (max-width: 767px) {
+    main {
+      padding: 1rem;
+    }
+
+    header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+
+    h1 {
+      font-size: 1.5rem;
+    }
+
+    .btn-primary {
+      width: 100%;
+    }
+
+    .detail-panel {
+      padding: 1rem;
+    }
+
+    .detail-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+
+    .detail-header h2 {
+      margin: 0;
+    }
+
+    .detail-actions {
+      width: 100%;
+    }
+
+    .detail-actions button {
+      flex: 1;
+    }
+
+    .recipe-meta {
+      grid-template-columns: 1fr;
+      gap: 0.5rem;
+    }
+
+    .form-row {
+      grid-template-columns: 1fr;
+    }
+
+    .mobile-label {
+      display: block;
+    }
+
+    .ingredient-row {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      padding: 1rem;
+      background: #f9fafb;
+      border-radius: 8px;
+      margin-bottom: 1rem;
+      position: relative;
+    }
+
+    .ingredient-row .btn-remove {
+      position: absolute;
+      top: 0.5rem;
+      right: 0.5rem;
+    }
+
+    .ingredient-field {
+      width: 100%;
+    }
+
+    .ingredient-field input,
+    .ingredient-field select {
+      width: 100%;
+    }
+
+    .instruction-row {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      padding: 1rem;
+      background: #f9fafb;
+      border-radius: 8px;
+      margin-bottom: 1rem;
+      position: relative;
+    }
+
+    .instruction-row .btn-remove {
+      position: absolute;
+      top: 0.5rem;
+      right: 0.5rem;
+    }
+
+    .step-number {
+      padding: 0;
+      font-size: 0.875rem;
+      color: #6b7280;
+    }
+
+    .instruction-row textarea {
+      min-height: 80px;
+      width: 100%;
+    }
+
+    .form-actions {
+      flex-direction: column-reverse;
+    }
+
+    .form-actions button {
+      width: 100%;
+    }
+
+    .photo-gallery {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.5rem;
+    }
+
+    .photo-delete-btn {
+      opacity: 1;
+    }
+
+    .drop-zone {
+      padding: 1.5rem 1rem;
+    }
+
+    .photo-preview-list {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.5rem;
+    }
+
+    .meta {
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .recipes-list {
+      max-height: 300px;
     }
   }
 

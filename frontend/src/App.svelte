@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { authStore } from "./lib/auth";
-  import { getCurrentUser } from "./lib/api";
+  import { getCurrentUser, logout } from "./lib/api";
   import Login from "./lib/Login.svelte";
   import Register from "./lib/Register.svelte";
   import Inventory from "./lib/Inventory.svelte";
@@ -28,6 +28,18 @@
       authStore.setLoading(false);
     }
   });
+
+  async function handleLogout() {
+    try {
+      await logout();
+      authStore.clear();
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
+  }
+
+  $: userName = $authStore.user?.name || "User";
+  $: householdName = $authStore.household?.name || "Household";
 </script>
 
 {#if $authStore.isLoading}
@@ -42,6 +54,21 @@
   {/if}
 {:else}
   <div class="app-container">
+    <header class="app-header">
+      <div class="user-info">
+        <div class="user-avatar">
+          {userName.charAt(0).toUpperCase()}
+        </div>
+        <div class="user-details">
+          <div class="user-name">{userName}</div>
+          <div class="household-badge">{householdName}</div>
+        </div>
+      </div>
+      <button type="button" class="logout-btn" on:click={handleLogout}>
+        Sign Out
+      </button>
+    </header>
+
     <nav class="main-nav">
       <button 
         class="nav-btn" 
@@ -83,6 +110,73 @@
     background-color: var(--bg-primary);
   }
 
+  .app-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 2rem;
+    background: var(--bg-header);
+    border-bottom: 1px solid var(--border-secondary);
+    box-shadow: var(--shadow-header);
+  }
+
+  .user-info {
+    display: flex;
+    align-items: center;
+    gap: 0.875rem;
+  }
+
+  .user-avatar {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #2f80ed 0%, #1e5bb8 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 1.125rem;
+    color: white;
+    box-shadow: 0 2px 8px rgba(47, 128, 237, 0.3);
+  }
+
+  .user-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .user-name {
+    font-weight: 600;
+    font-size: 1rem;
+    color: var(--text-primary);
+  }
+
+  .household-badge {
+    font-size: 0.8rem;
+    color: var(--text-tertiary);
+    background: var(--bg-pill);
+    padding: 0.125rem 0.5rem;
+    border-radius: 4px;
+    width: fit-content;
+  }
+
+  .logout-btn {
+    background: var(--bg-button-secondary);
+    border: 1px solid var(--border-primary);
+    color: var(--text-button-secondary);
+    padding: 0.5rem 1.25rem;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .logout-btn:hover {
+    filter: brightness(1.1);
+  }
+
   .main-nav {
     background: white;
     border-bottom: 1px solid #e5e7eb;
@@ -110,5 +204,16 @@
   .nav-btn.active {
     color: #3b82f6;
     border-bottom-color: #3b82f6;
+  }
+
+  @media screen and (max-width: 767px) {
+    .app-header {
+      padding: 1rem;
+    }
+    
+    .logout-btn {
+      padding: 0.4rem 1rem;
+      font-size: 0.85rem;
+    }
   }
 </style>
