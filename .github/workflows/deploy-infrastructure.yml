@@ -46,7 +46,7 @@ jobs:
         run: |
           az group create \
             --name ${{ env.RESOURCE_GROUP }} \
-            --location austriaeast
+            --location germanywestcentral
 
       - name: Deploy Bicep Template
         run: |
@@ -55,7 +55,8 @@ jobs:
             --resource-group ${{ env.RESOURCE_GROUP }} \
             --template-file deploy/bicep/main.bicep \
             --parameters environment=${{ github.event.inputs.environment }} \
-            --parameters location=austriaeast \
+            --parameters location=germanywestcentral \
+            --parameters logAnalyticsLocation=germanywestcentral \
             --parameters containerRegistryUsername=${{ github.actor }} \
             --parameters containerRegistryPassword=${{ secrets.GITHUB_TOKEN }} \
             --parameters frontendImage=ghcr.io/${{ github.repository }}/frontend:latest \
