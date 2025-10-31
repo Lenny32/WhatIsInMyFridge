@@ -58,6 +58,8 @@ jobs:
 
       - name: Deploy Bicep Template
         run: |
+          REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          
           az deployment group create \
             --name "${{ env.DEPLOYMENT_NAME }}" \
             --resource-group ${{ env.RESOURCE_GROUP }} \
@@ -67,8 +69,8 @@ jobs:
             --parameters logAnalyticsLocation=germanywestcentral \
             --parameters containerRegistryUsername=${{ github.actor }} \
             --parameters containerRegistryPassword=${{ secrets.GITHUB_TOKEN }} \
-            --parameters frontendImage=ghcr.io/${{ github.repository }}/frontend:latest \
-            --parameters backendImage=ghcr.io/${{ github.repository }}/backend:latest \
+            --parameters frontendImage=ghcr.io/${REPO_LOWER}/frontend:latest \
+            --parameters backendImage=ghcr.io/${REPO_LOWER}/backend:latest \
             --parameters jwtSecretKey=${{ secrets.JWT_SECRET_KEY }} \
             --parameters revisionSuffix=${{ env.REVISION_SUFFIX }}
 

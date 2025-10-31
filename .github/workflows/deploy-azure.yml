@@ -9,6 +9,7 @@ on:
         type: choice
         options:
           - test
+          - test2
           - prod
       image_tag:
         description: 'Image tag to deploy'
@@ -23,8 +24,8 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  FRONTEND_IMAGE_NAME: ${{ github.repository }}/frontend
-  BACKEND_IMAGE_NAME: ${{ github.repository }}/backend
+  FRONTEND_IMAGE_NAME: lenny32/whatisinmyfridge/frontend
+  BACKEND_IMAGE_NAME: lenny32/whatisinmyfridge/backend
 
 jobs:
   deploy:
