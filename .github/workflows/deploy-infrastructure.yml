@@ -46,14 +46,14 @@ jobs:
           # Delete if exists with wrong location, then create
           EXISTING_LOCATION=$(az group show --name ${{ env.RESOURCE_GROUP }} --query location -o tsv 2>/dev/null || echo "")
           
-          if [ -n "$EXISTING_LOCATION" ] && [ "$EXISTING_LOCATION" != "germanywestcentral" ]; then
+          if [ -n "$EXISTING_LOCATION" ] && [ "$EXISTING_LOCATION" != "westeurope" ]; then
             echo "Resource group exists in $EXISTING_LOCATION, deleting..."
             az group delete --name ${{ env.RESOURCE_GROUP }} --yes
           fi
           
           az group create \
             --name ${{ env.RESOURCE_GROUP }} \
-            --location germanywestcentral
+            --location westeurope
 
       - name: Deploy Bicep Template
         run: |
@@ -64,8 +64,8 @@ jobs:
             --resource-group ${{ env.RESOURCE_GROUP }} \
             --template-file deploy/bicep/main.bicep \
             --parameters environment=${{ github.event.inputs.environment }} \
-            --parameters location=germanywestcentral \
-            --parameters logAnalyticsLocation=germanywestcentral \
+            --parameters location=westeurope \
+            --parameters logAnalyticsLocation=westeurope \
             --parameters containerRegistryUsername=${{ github.actor }} \
             --parameters containerRegistryPassword=${{ secrets.GHCR_TOKEN }} \
             --parameters frontendImage=ghcr.io/${REPO_LOWER}/frontend:latest \
