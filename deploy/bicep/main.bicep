@@ -40,6 +40,9 @@ param backendImage string
 @secure()
 param jwtSecretKey string
 
+@description('Optional revision suffix to force new revision creation')
+param revisionSuffix string = ''
+
 var resourceGroupName = 'rg-whatismyfridge-${environment}'
 var containerAppEnvName = 'cae-whatismyfridge-${environment}'
 var frontendAppName = 'ca-frontend-${environment}'
@@ -301,6 +304,7 @@ resource backendApp 'Microsoft.App/containerApps@2024-03-01' = {
       ]
     }
     template: {
+      revisionSuffix: revisionSuffix != '' ? revisionSuffix : null
       containers: [
         {
           name: 'backend'
@@ -401,6 +405,7 @@ resource frontendApp 'Microsoft.App/containerApps@2024-03-01' = {
       ]
     }
     template: {
+      revisionSuffix: revisionSuffix != '' ? revisionSuffix : null
       containers: [
         {
           name: 'frontend'

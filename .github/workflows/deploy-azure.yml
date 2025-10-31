@@ -46,12 +46,14 @@ jobs:
         run: |
           ENV="${{ github.event.inputs.environment || 'test' }}"
           TAG="${{ github.event.inputs.image_tag || 'latest' }}"
+          REVISION_SUFFIX="$(date +%s)-${GITHUB_SHA:0:7}"
           
           echo "DEPLOY_ENV=$ENV" >> $GITHUB_ENV
           echo "IMAGE_TAG=$TAG" >> $GITHUB_ENV
           echo "RESOURCE_GROUP=rg-whatismyfridge-$ENV" >> $GITHUB_ENV
           echo "FRONTEND_APP=ca-frontend-$ENV" >> $GITHUB_ENV
           echo "BACKEND_APP=ca-backend-$ENV" >> $GITHUB_ENV
+          echo "REVISION_SUFFIX=$REVISION_SUFFIX" >> $GITHUB_ENV
 
       - name: Update Backend Container App
         run: |
@@ -71,6 +73,7 @@ jobs:
             --name ${{ env.BACKEND_APP }} \
             --resource-group ${{ env.RESOURCE_GROUP }} \
             --image ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}:${{ env.IMAGE_TAG }} \
+            --revision-suffix ${{ env.REVISION_SUFFIX }} \
             --set-env-vars "ALLOWED_ORIGINS=${ALLOWED_ORIGINS}"
 
       - name: Update Frontend Container App
@@ -85,6 +88,7 @@ jobs:
             --name ${{ env.FRONTEND_APP }} \
             --resource-group ${{ env.RESOURCE_GROUP }} \
             --image ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}:${{ env.IMAGE_TAG }} \
+            --revision-suffix ${{ env.REVISION_SUFFIX }} \
             --set-env-vars "VITE_API_BASE=https://${BACKEND_FQDN}"
 
       - name: Get Application URLs

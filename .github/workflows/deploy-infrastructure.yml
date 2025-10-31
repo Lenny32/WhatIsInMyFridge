@@ -27,6 +27,9 @@ jobs:
 
       - name: Set environment variables
         run: |
+          REVISION_SUFFIX="$(date +%s)-${GITHUB_SHA:0:7}"
+          DEPLOYMENT_NAME="deploy-${{ github.event.inputs.environment }}-$(date +%Y%m%d-%H%M%S)"
+          
           if [ "${{ github.event.inputs.environment }}" == "prod" ]; then
             echo "RESOURCE_GROUP=rg-whatismyfridge-prod" >> $GITHUB_ENV
             echo "SUBSCRIPTION_ID=${{ secrets.AZURE_SUBSCRIPTION_ID }}" >> $GITHUB_ENV
@@ -34,6 +37,9 @@ jobs:
             echo "RESOURCE_GROUP=rg-whatismyfridge-test" >> $GITHUB_ENV
             echo "SUBSCRIPTION_ID=${{ secrets.AZURE_SUBSCRIPTION_ID }}" >> $GITHUB_ENV
           fi
+          
+          echo "REVISION_SUFFIX=$REVISION_SUFFIX" >> $GITHUB_ENV
+          echo "DEPLOYMENT_NAME=$DEPLOYMENT_NAME" >> $GITHUB_ENV
 
       - name: Create Resource Group
         run: |
@@ -44,7 +50,7 @@ jobs:
       - name: Deploy Bicep Template
         run: |
           az deployment group create \
-            --name "deploy-${{ github.event.inputs.environment }}-$(date +%Y%m%d-%H%M%S)" \
+            --name "${{ env.DEPLOYMENT_NAME }}" \
             --resource-group ${{ env.RESOURCE_GROUP }} \
             --template-file deploy/bicep/main.bicep \
             --parameters environment=${{ github.event.inputs.environment }} \
@@ -53,19 +59,20 @@ jobs:
             --parameters containerRegistryPassword=${{ secrets.GITHUB_TOKEN }} \
             --parameters frontendImage=ghcr.io/${{ github.repository }}/frontend:latest \
             --parameters backendImage=ghcr.io/${{ github.repository }}/backend:latest \
-            --parameters jwtSecretKey=${{ secrets.JWT_SECRET_KEY }}
+            --parameters jwtSecretKey=${{ secrets.JWT_SECRET_KEY }} \
+            --parameters revisionSuffix=${{ env.REVISION_SUFFIX }}
 
       - name: Get Deployment Outputs
         id: outputs
         run: |
           FRONTEND_URL=$(az deployment group show \
-            --name "deploy-${{ github.event.inputs.environment }}-$(date +%Y%m%d-%H%M%S)" \
+            --name "${{ env.DEPLOYMENT_NAME }}" \
             --resource-group ${{ env.RESOURCE_GROUP }} \
             --query properties.outputs.frontendUrl.value \
             --output tsv)
           
           BACKEND_URL=$(az deployment group show \
-            --name "deploy-${{ github.event.inputs.environment }}-$(date +%Y%m%d-%H%M%S)" \
+            --name "${{ env.DEPLOYMENT_NAME }}" \
             --resource-group ${{ env.RESOURCE_GROUP }} \
             --query properties.outputs.backendUrl.value \
             --output tsv)
