@@ -3,16 +3,6 @@ name: Build and Push Docker Images
 on:
   workflow_dispatch:
     inputs:
-      build_frontend:
-        description: 'Build Frontend'
-        required: true
-        type: boolean
-        default: true
-      build_backend:
-        description: 'Build Backend'
-        required: true
-        type: boolean
-        default: true
       tag:
         description: 'Image tag (e.g., v1.0.0 or latest)'
         required: true
@@ -32,7 +22,6 @@ env:
 
 jobs:
   build-frontend:
-    if: ${{ github.event_name == 'push' || github.event.inputs.build_frontend == 'true' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -73,7 +62,6 @@ jobs:
           cache-to: type=gha,mode=max
 
   build-backend:
-    if: ${{ github.event_name == 'push' || github.event.inputs.build_backend == 'true' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
