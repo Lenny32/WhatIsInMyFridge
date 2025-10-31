@@ -82,8 +82,8 @@ jobs:
           }
           export interface components {
             schemas: {
-              FoodCategory: "Dairy" | "Meat" | "Vegetables" | "Fruits" | "Grains" | "Snacks" | "Beverages" | "Condiments" | "Other";
-              MeasurementUnit: "Piece" | "Gram" | "Kilogram" | "Milliliter" | "Liter" | "Teaspoon" | "Tablespoon" | "Cup" | "Ounce" | "Pound" | "Pinch";
+              FoodCategory: "Dairy" | "Cheese" | "Yogurt" | "Eggs" | "Meat" | "Poultry" | "Fish" | "Seafood" | "Vegetables" | "Fruits" | "Herbs" | "Bread" | "Pasta" | "Rice" | "Cereal" | "CannedGoods" | "Condiments" | "Sauces" | "Spices" | "Oils" | "Beverages" | "Juice" | "Soda" | "FrozenMeals" | "FrozenVegetables" | "FrozenFruits" | "IceCream" | "Snacks" | "Desserts" | "Candy" | "Leftovers" | "PreparedMeals" | "Other" | "Undefined";
+              MeasurementUnit: "Pieces" | "Items" | "Grams" | "Kilograms" | "Ounces" | "Pounds" | "Milliliters" | "Liters" | "FluidOunces" | "Cups" | "Pints" | "Quarts" | "Gallons" | "Teaspoons" | "Tablespoons" | "Cans" | "Bottles" | "Jars" | "Boxes" | "Bags" | "Packages" | "Cartons" | "Undefined";
             };
           }
           EOF
