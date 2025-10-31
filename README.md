@@ -96,3 +96,28 @@ This creates `frontend/src/lib/api-types.ts` with fully typed interfaces for all
 ✅ Compile-time validation of API calls  
 ✅ Automatic sync when backend changes  
 ✅ Single source of truth for API contracts
+
+## 🚀 Deployment
+
+### Docker (Recommended)
+
+The **easiest way to deploy** - everything (frontend + backend) in a single container!
+
+```bash
+# 1. Set environment variables
+cp .env.example .env
+# Edit .env with your JWT_SECRET_KEY and COSMOS_CONNECTION_STRING
+
+# 2. Run with Docker Compose
+docker-compose -f docker-compose.simple.yml up -d
+
+# 3. Access at http://localhost
+```
+
+**GitHub Actions automatically builds and publishes the Docker image** to GitHub Container Registry on every push to `main`.
+
+📦 **Quick Deploy Guide:** [QUICK_DEPLOY.md](QUICK_DEPLOY.md)  
+🐳 **Full Docker Guide:** [DOCKER_DEPLOYMENT.md](DOCKER_DEPLOYMENT.md)  
+☁️ **Azure/Manual Deploy:** [DEPLOYMENT.md](DEPLOYMENT.md)
+
+**Works on:** Azure Container Instances, AWS ECS, Google Cloud Run, Railway, Fly.io, DigitalOcean, and anywhere Docker runs!

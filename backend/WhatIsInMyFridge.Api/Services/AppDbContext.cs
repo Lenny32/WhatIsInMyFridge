@@ -13,7 +13,8 @@ public sealed class AppDbContext : DbContext
     public DbSet<Household> Households => Set<Household>();
     public DbSet<FoodItem> FoodItems => Set<FoodItem>();
     public DbSet<Recipe> Recipes => Set<Recipe>();
-    public DbSet<RecipeIngredient> RecipeIngredients => Set<RecipeIngredient>();
+    // RecipeIngredient is owned by Recipe - not a standalone entity
+    // public DbSet<RecipeIngredient> RecipeIngredients => Set<RecipeIngredient>();
     public DbSet<GroceryItem> GroceryItems => Set<GroceryItem>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -61,14 +62,16 @@ public sealed class AppDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.Property(e => e.HouseholdId).IsRequired();
             entity.Property(e => e.Name).IsRequired();
-            // Cosmos DB stores lists natively - no conversion needed
+            // Ingredients are stored inline as owned entities
             entity.OwnsMany(e => e.Ingredients, ingredient =>
             {
-                ingredient.Property(i => i.Unit)
-                    .HasConversion<string>();
+                ingredient.Property(i => i.Unit).HasConversion<string>();
             });
         });
 
+        // RecipeIngredients container is not used - ingredients are stored inline with Recipe
+        // Commenting out to avoid conflict with OwnsMany above
+        /*
         modelBuilder.Entity<RecipeIngredient>(entity =>
         {
             entity.ToContainer("RecipeIngredients");
@@ -80,7 +83,8 @@ public sealed class AppDbContext : DbContext
                 .IsRequired()
                 .HasConversion<string>();
         });
-
+        */
+        
         modelBuilder.Entity<GroceryItem>(entity =>
         {
             entity.ToContainer("GroceryItems");

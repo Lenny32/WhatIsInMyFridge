@@ -2,6 +2,25 @@
 
 This guide covers deploying your food inventory app for **FREE** using Azure services.
 
+---
+
+## 🐳 **RECOMMENDED: Docker Deployment**
+
+**The easiest way to deploy!** Everything (frontend + backend) in a single Docker container.
+
+📦 **See [QUICK_DEPLOY.md](QUICK_DEPLOY.md) for the fastest deployment method.**
+
+GitHub Actions automatically builds and publishes the Docker image on every push. Just:
+1. Set environment variables (JWT secret, Cosmos DB connection)
+2. Run: `docker-compose -f docker-compose.simple.yml up -d`
+3. Done! 🎉
+
+Works on: Azure Container Instances, AWS ECS, Google Cloud Run, Railway, Fly.io, DigitalOcean, and anywhere Docker runs.
+
+**Continue below for manual/custom deployment options.**
+
+---
+
 ## Architecture Overview
 
 - **Backend**: .NET 9 API with Cosmos DB (NoSQL) deployed on Azure App Service

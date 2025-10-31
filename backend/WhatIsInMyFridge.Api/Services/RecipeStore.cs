@@ -76,10 +76,7 @@ public sealed class RecipeStore
         
         if (request.Ingredients != null)
         {
-            // Remove old ingredients
-            _context.RecipeIngredients.RemoveRange(existing.Ingredients);
-            
-            // Add new ingredients
+            // With owned entities, just replace the list - EF will handle the rest
             existing.Ingredients = request.Ingredients.Select(i => new RecipeIngredient
             {
                 RecipeId = existing.Id,

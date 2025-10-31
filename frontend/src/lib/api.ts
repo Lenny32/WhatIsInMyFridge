@@ -3,7 +3,7 @@ import { getToken } from "./auth";
 import createClient from "openapi-fetch";
 import type { paths } from "./api-types";
 
-const API_BASE = "";
+const API_BASE = import.meta.env.VITE_API_BASE || "";
 
 /**
  * Debug error information attached to errors when the backend is running in development mode.

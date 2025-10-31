@@ -35,6 +35,7 @@ public sealed class GroceryListStore
         var now = DateTimeOffset.UtcNow;
         var item = new GroceryItem
         {
+            Id = Guid.NewGuid().ToString(),
             HouseholdId = householdId,
             Name = request.Name.Trim(),
             Quantity = request.Quantity,

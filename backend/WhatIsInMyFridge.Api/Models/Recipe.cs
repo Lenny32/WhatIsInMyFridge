@@ -9,7 +9,10 @@ public sealed class Recipe
     public int Servings { get; set; } = 1;
     public int PrepTimeMinutes { get; set; }
     public int CookTimeMinutes { get; set; }
+    
+    // Stored inline within the Recipe document in Cosmos DB
     public List<RecipeIngredient> Ingredients { get; set; } = new();
+    
     public List<string> Instructions { get; set; } = new();
     public string? Notes { get; set; }
     public List<string> Photos { get; set; } = new();
