@@ -1,6 +1,7 @@
-@description('Environment name (test or prod)')
+@description('Environment name (test, test2, or prod)')
 @allowed([
   'test'
+  'test2'
   'prod'
 ])
 param environment string
