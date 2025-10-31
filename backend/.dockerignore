@@ -1,0 +1,10 @@
+# Backend Dockerfile
+backend/WhatIsInMyFridge.Api/Dockerfile
+
+# Ignore build artifacts
+**/bin/
+**/obj/
+**/publish/
+
+# Ignore data files
+**/data/items.json
