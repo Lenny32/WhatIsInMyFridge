@@ -1,31 +1,31 @@
-# Build stage
-FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
-WORKDIR /src
+# See https://aka.ms/customizecontainer to learn how to customize your debug container and how Visual Studio uses this Dockerfile to build your images for faster debugging.
 
-# Copy solution and project files
-COPY ["WhatIsInMyFridge.Api/WhatIsInMyFridge.Api.csproj", "WhatIsInMyFridge.Api/"]
-
-# Restore dependencies
-RUN dotnet restore "WhatIsInMyFridge.Api/WhatIsInMyFridge.Api.csproj"
-
-# Copy all source files
-COPY . .
-
-# Build the application
-WORKDIR "/src/WhatIsInMyFridge.Api"
-RUN dotnet build "WhatIsInMyFridge.Api.csproj" -c Release -o /app/build
-
-# Publish stage
-FROM build AS publish
-RUN dotnet publish "WhatIsInMyFridge.Api.csproj" -c Release -o /app/publish /p:UseAppHost=false
-
-# Runtime stage
-FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS final
+# This stage is used when running from VS in fast mode (Default for Debug configuration)
+FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS base
+USER $APP_UID
 WORKDIR /app
 EXPOSE 8080
+EXPOSE 8081
+
+
+# This stage is used to build the service project
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+ARG BUILD_CONFIGURATION=Release
+WORKDIR /src
+COPY ["backend/WhatIsInMyFridge.Api/WhatIsInMyFridge.Api.csproj", "backend/WhatIsInMyFridge.Api/"]
+COPY ["backend/WhatIsInMyFridge.ServiceDefaults/WhatIsInMyFridge.ServiceDefaults.csproj", "backend/WhatIsInMyFridge.ServiceDefaults/"]
+RUN dotnet restore "./backend/WhatIsInMyFridge.Api/WhatIsInMyFridge.Api.csproj"
+COPY . .
+WORKDIR "/src/backend/WhatIsInMyFridge.Api"
+RUN dotnet build "./WhatIsInMyFridge.Api.csproj" -c $BUILD_CONFIGURATION -o /app/build
+
+# This stage is used to publish the service project to be copied to the final stage
+FROM build AS publish
+ARG BUILD_CONFIGURATION=Release
+RUN dotnet publish "./WhatIsInMyFridge.Api.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+
+# This stage is used in production or when running from VS in regular mode (Default when not using the Debug configuration)
+FROM base AS final
+WORKDIR /app
 COPY --from=publish /app/publish .
-
-# Create data directory for items.json
-RUN mkdir -p /app/data
-
 ENTRYPOINT ["dotnet", "WhatIsInMyFridge.Api.dll"]
