@@ -75,8 +75,17 @@ jobs:
           cat > src/lib/api-types.ts << 'EOF'
           // Auto-generated stub for CI builds
           // Run 'deno task generate-api' locally to generate from OpenAPI spec
-          export interface paths {}
-          export interface components {}
+          export interface paths {
+            "/api/grocery": any;
+            "/api/grocery/{id}": any;
+            "/api/grocery/purchased": any;
+          }
+          export interface components {
+            schemas: {
+              FoodCategory: "Dairy" | "Meat" | "Vegetables" | "Fruits" | "Grains" | "Snacks" | "Beverages" | "Condiments" | "Other";
+              MeasurementUnit: "Piece" | "Gram" | "Kilogram" | "Milliliter" | "Liter" | "Teaspoon" | "Tablespoon" | "Cup" | "Ounce" | "Pound" | "Pinch";
+            };
+          }
           EOF
 
       - name: Run type checking
