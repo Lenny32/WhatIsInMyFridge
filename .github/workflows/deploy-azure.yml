@@ -1,0 +1,101 @@
+name: Deploy to Azure
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        type: choice
+        options:
+          - test
+          - prod
+      deploy_frontend:
+        description: 'Deploy Frontend'
+        required: true
+        type: boolean
+        default: true
+      deploy_backend:
+        description: 'Deploy Backend'
+        required: true
+        type: boolean
+        default: true
+      image_tag:
+        description: 'Image tag to deploy'
+        required: true
+        default: 'latest'
+
+env:
+  REGISTRY: ghcr.io
+  FRONTEND_IMAGE_NAME: ${{ github.repository }}/frontend
+  BACKEND_IMAGE_NAME: ${{ github.repository }}/backend
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Set environment variables
+        run: |
+          if [ "${{ github.event.inputs.environment }}" == "prod" ]; then
+            echo "RESOURCE_GROUP=rg-whatismyfridge-prod" >> $GITHUB_ENV
+            echo "CONTAINER_APP_ENV=cae-whatismyfridge-prod" >> $GITHUB_ENV
+            echo "FRONTEND_APP=ca-frontend-prod" >> $GITHUB_ENV
+            echo "BACKEND_APP=ca-backend-prod" >> $GITHUB_ENV
+          else
+            echo "RESOURCE_GROUP=rg-whatismyfridge-test" >> $GITHUB_ENV
+            echo "CONTAINER_APP_ENV=cae-whatismyfridge-test" >> $GITHUB_ENV
+            echo "FRONTEND_APP=ca-frontend-test" >> $GITHUB_ENV
+            echo "BACKEND_APP=ca-backend-test" >> $GITHUB_ENV
+          fi
+
+      - name: Deploy Backend to Azure Container Apps
+        if: ${{ github.event.inputs.deploy_backend == 'true' }}
+        run: |
+          # Get frontend URL for CORS
+          FRONTEND_URL=$(az containerapp show \
+            --name ${{ env.FRONTEND_APP }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --query properties.configuration.ingress.fqdn \
+            --output tsv)
+          
+          az containerapp update \
+            --name ${{ env.BACKEND_APP }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --image ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}:${{ github.event.inputs.image_tag }} \
+            --set-env-vars \
+              ASPNETCORE_ENVIRONMENT=${{ github.event.inputs.environment == 'prod' && 'Production' || 'Development' }} \
+              COSMOS_CONNECTION_STRING=secretref:cosmos-connection-string \
+              BLOB_STORAGE_CONNECTION_STRING=secretref:blob-storage-connection-string \
+              JWT_SECRET_KEY=secretref:jwt-secret-key \
+              ALLOWED_ORIGINS="https://${FRONTEND_URL}"
+
+      - name: Deploy Frontend to Azure Container Apps
+        if: ${{ github.event.inputs.deploy_frontend == 'true' }}
+        run: |
+          # Get backend URL
+          BACKEND_URL=$(az containerapp show \
+            --name ${{ env.BACKEND_APP }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --query properties.configuration.ingress.fqdn \
+            --output tsv)
+          
+          az containerapp update \
+            --name ${{ env.FRONTEND_APP }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --image ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}:${{ github.event.inputs.image_tag }} \
+            --set-env-vars \
+              VITE_API_BASE=https://${BACKEND_URL}
+
+      - name: Azure Logout
+        if: always()
+        run: az logout

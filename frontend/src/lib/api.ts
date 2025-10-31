@@ -3,7 +3,7 @@ import { getToken } from "./auth";
 import createClient from "openapi-fetch";
 import type { paths } from "./api-types";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "";
+const API_BASE = import.meta.env.VITE_API_BASE || "__VITE_API_BASE__" || "";
 
 /**
  * Debug error information attached to errors when the backend is running in development mode.
@@ -216,7 +216,7 @@ export async function uploadRecipePhoto(recipeId: string, file: File): Promise<{
   const formData = new FormData();
   formData.append("file", file);
 
-  const response = await fetch(`/api/recipes/${recipeId}/photos`, {
+  const response = await fetch(`${API_BASE}/api/recipes/${recipeId}/photos`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -283,5 +283,5 @@ export async function deleteRecipePhoto(recipeId: string, photoId: string): Prom
 }
 
 export function getPhotoUrl(photoId: string, extension: string = ".jpg"): string {
-  return `/api/photos/${photoId}${extension}`;
+  return `${API_BASE}/api/photos/${photoId}${extension}`;
 }

@@ -116,16 +116,26 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
-// Add CORS for custom domain
+// Add CORS for custom domain and Azure Container Apps
+var allowedOrigins = new List<string>
+{
+    "http://localhost:5173",
+    "https://fridge.colen.at",
+    "https://colen.at"
+};
+
+// Add origins from environment variable (for Azure Container Apps)
+var envOrigins = Environment.GetEnvironmentVariable("ALLOWED_ORIGINS");
+if (!string.IsNullOrEmpty(envOrigins))
+{
+    allowedOrigins.AddRange(envOrigins.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+}
+
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        policy.WithOrigins(
-                "http://localhost:5173",
-                "https://fridge.colen.at",
-                "https://colen.at"
-              )
+        policy.WithOrigins(allowedOrigins.ToArray())
               .AllowAnyMethod()
               .AllowAnyHeader()
               .AllowCredentials();
@@ -190,6 +200,8 @@ if (app.Environment.IsDevelopment())
         }
     });
 }
+
+app.UseCors();
 
 app.UseSwagger();
 app.UseSwaggerUI();

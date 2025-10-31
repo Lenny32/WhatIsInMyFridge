@@ -1,8 +1,116 @@
-# Azure Deployment with Bicep
+# Azure Deployment Files
 
-This folder contains Infrastructure-as-Code (IaC) templates for deploying WhatIsInMyFridge to Azure using Bicep.
+This directory contains deployment scripts and documentation for deploying WhatIsInMyFridge to Azure.
 
-## What Gets Deployed
+## 🚀 Quick Start - Container Apps Deployment (Recommended)
+
+**For containerized deployment with Test and Prod environments:**
+
+```bash
+# 1. Create infrastructure
+chmod +x azure-setup.sh configure-secrets.sh
+./azure-setup.sh
+
+# 2. Configure secrets and connection strings
+./configure-secrets.sh test
+./configure-secrets.sh prod
+
+# 3. See QUICK_START_SUMMARY.md for GitHub Actions setup
+```
+
+## 📚 Documentation Files
+
+### Container Apps Deployment (NEW - Recommended)
+
+| File | Description |
+|------|-------------|
+| **QUICK_START_SUMMARY.md** | ⭐ Start here! Quick overview with connection strings, CORS, API URLs |
+| **AZURE_CONTAINER_APPS_GUIDE.md** | Complete step-by-step deployment guide |
+| **CONFIGURATION_GUIDE.md** | Detailed connection strings and secrets configuration |
+| **DEPLOYMENT_SUMMARY.md** | Architecture overview and what was created |
+| **QUICK_COMMANDS.md** | CLI command reference for common operations |
+
+### Scripts
+
+| File | Description |
+|------|-------------|
+| **azure-setup.sh** | Creates all Azure infrastructure (Container Apps, Storage, etc.) |
+| **configure-secrets.sh** | Configures Cosmos DB, Blob Storage, and all secrets |
+
+### Bicep Deployment (Legacy)
+
+The Bicep files (`main.bicep`, `main.parameters.json`, `deploy.sh`) provide an alternative deployment method using Azure App Service. See the Bicep section below for details.
+
+## 🎯 Which Deployment Method?
+
+### Container Apps (Recommended) ✨
+- ✅ Separate containers for frontend and backend
+- ✅ Scale-to-zero (pay only when used)
+- ✅ Test and Prod environments
+- ✅ GitHub Actions CI/CD
+- ✅ ~$15-20/month for both environments
+- 📖 **Start with QUICK_START_SUMMARY.md**
+
+### Bicep/App Service (Legacy)
+- ✅ Simpler architecture
+- ✅ Free tier available (with limits)
+- ✅ Good for prototyping
+- ❌ Less scalable
+- 📖 **See Bicep section below**
+
+---
+
+## Container Apps Deployment (Recommended)
+
+### What Gets Created
+
+**Infrastructure:**
+- 2 Resource Groups (test, prod)
+- 2 Container Apps Environments
+- 4 Container Apps (2 frontend, 2 backend)
+- 2 Cosmos DB accounts (serverless)
+- 2 Storage Accounts
+- 2 Log Analytics Workspaces
+
+**CI/CD:**
+- GitHub Actions workflows for building images
+- GitHub Actions workflows for deployment
+
+### Quick Deployment
+
+```bash
+# One-time setup
+./azure-setup.sh
+./configure-secrets.sh test
+./configure-secrets.sh prod
+
+# Deploy via GitHub Actions
+# See QUICK_START_SUMMARY.md for details
+```
+
+### Key Features
+
+✅ **Connection Strings**: Automatically configured (Cosmos DB, Blob Storage)  
+✅ **CORS**: Automatically configured with frontend URL  
+✅ **API URLs**: Frontend automatically receives backend URL  
+✅ **Secrets**: Stored securely in Azure Container Apps  
+✅ **Cost**: ~$15-20/month for both environments
+
+### Documentation
+
+| If you want to... | Read this |
+|-------------------|-----------|
+| Deploy quickly | QUICK_START_SUMMARY.md |
+| Understand architecture | DEPLOYMENT_SUMMARY.md |
+| Follow step-by-step | AZURE_CONTAINER_APPS_GUIDE.md |
+| Configure secrets | CONFIGURATION_GUIDE.md |
+| Find CLI commands | QUICK_COMMANDS.md |
+
+---
+
+## Bicep Deployment (Legacy)
+
+### What Gets Deployed
 
 The Bicep template (`main.bicep`) provisions:
 
@@ -26,13 +134,13 @@ The Bicep template (`main.bicep`) provisions:
    - Svelte frontend with GitHub integration
    - Automatic deployment via GitHub Actions
 
-## Prerequisites
+### Prerequisites
 
 - [Azure CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli) installed
 - Azure subscription (free tier is sufficient)
 - (Optional) GitHub repository for automatic frontend deployment
 
-## Quick Start
+### Quick Start (Bicep)
 
 ### 1. Login to Azure
 
