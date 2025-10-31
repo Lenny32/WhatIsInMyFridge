@@ -76,9 +76,69 @@ jobs:
           // Auto-generated stub for CI builds
           // Run 'deno task generate-api' locally to generate from OpenAPI spec
           export interface paths {
-            "/api/grocery": any;
-            "/api/grocery/{id}": any;
-            "/api/grocery/purchased": any;
+            "/api/grocery": {
+              get: {
+                responses: {
+                  200: {
+                    content: {
+                      "application/json": any[];
+                    };
+                  };
+                };
+              };
+              post: {
+                requestBody: {
+                  content: {
+                    "application/json": any;
+                  };
+                };
+                responses: {
+                  200: {
+                    content: {
+                      "application/json": any;
+                    };
+                  };
+                };
+              };
+            };
+            "/api/grocery/{id}": {
+              patch: {
+                parameters: {
+                  path: {
+                    id: string;
+                  };
+                };
+                requestBody: {
+                  content: {
+                    "application/json": any;
+                  };
+                };
+                responses: {
+                  200: {
+                    content: {
+                      "application/json": any;
+                    };
+                  };
+                };
+              };
+              delete: {
+                parameters: {
+                  path: {
+                    id: string;
+                  };
+                };
+                responses: {
+                  204: never;
+                };
+              };
+            };
+            "/api/grocery/purchased": {
+              delete: {
+                responses: {
+                  204: never;
+                };
+              };
+            };
           }
           export interface components {
             schemas: {
