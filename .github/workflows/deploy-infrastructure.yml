@@ -68,7 +68,7 @@ jobs:
             --parameters location=germanywestcentral \
             --parameters logAnalyticsLocation=germanywestcentral \
             --parameters containerRegistryUsername=${{ github.actor }} \
-            --parameters containerRegistryPassword=${{ secrets.GITHUB_TOKEN }} \
+            --parameters containerRegistryPassword=${{ secrets.GHCR_TOKEN }} \
             --parameters frontendImage=ghcr.io/${REPO_LOWER}/frontend:latest \
             --parameters backendImage=ghcr.io/${REPO_LOWER}/backend:latest \
             --parameters jwtSecretKey=${{ secrets.JWT_SECRET_KEY }} \
