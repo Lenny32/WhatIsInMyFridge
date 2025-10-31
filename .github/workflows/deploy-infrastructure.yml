@@ -44,6 +44,14 @@ jobs:
 
       - name: Create Resource Group
         run: |
+          # Delete if exists with wrong location, then create
+          EXISTING_LOCATION=$(az group show --name ${{ env.RESOURCE_GROUP }} --query location -o tsv 2>/dev/null || echo "")
+          
+          if [ -n "$EXISTING_LOCATION" ] && [ "$EXISTING_LOCATION" != "germanywestcentral" ]; then
+            echo "Resource group exists in $EXISTING_LOCATION, deleting..."
+            az group delete --name ${{ env.RESOURCE_GROUP }} --yes
+          fi
+          
           az group create \
             --name ${{ env.RESOURCE_GROUP }} \
             --location germanywestcentral
