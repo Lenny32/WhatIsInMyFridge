@@ -103,9 +103,15 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-// Note: Cosmos DB database and containers are created via Azure deployment
-// EnsureCreatedAsync() is not reliable with Cosmos DB provider
-// Database initialization is handled by Azure CLI during deployment
+// Initialize Cosmos DB database and containers
+if (app.Environment.IsDevelopment())
+{
+    using var scope = app.Services.CreateScope();
+    var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    
+    // EnsureCreated creates the database and containers
+    await dbContext.Database.EnsureCreatedAsync();
+}
 
 // Exception handling middleware - serialize exceptions in debug mode
 if (app.Environment.IsDevelopment())
