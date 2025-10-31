@@ -1,0 +1,8 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+
+name: what-is-in-my-fridge
+services:  
+  app:
+    language: dotnet
+    project: ./backend/WhatIsInMyFridge.AppHost/WhatIsInMyFridge.AppHost.csproj
+    host: containerapp
