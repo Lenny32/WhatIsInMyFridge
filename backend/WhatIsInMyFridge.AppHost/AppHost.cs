@@ -1,12 +1,15 @@
 var builder = DistributedApplication.CreateBuilder(args);
+#pragma warning disable ASPIRECOSMOSDB001 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
 
 // Add Azure Cosmos DB Emulator
 var cosmosDb = builder.AddAzureCosmosDB("cosmos")
-    .RunAsEmulator(cosmosBuilder =>
+    .RunAsPreviewEmulator(cosmosBuilder =>
     {
         cosmosBuilder.WithLifetime(ContainerLifetime.Persistent);
+        cosmosBuilder.WithDataExplorer();
     })
     .AddCosmosDatabase("WhatIsInMyFridge");
+#pragma warning restore ASPIRECOSMOSDB001 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
 
 // Add Azure Storage Emulator (Azurite)
 var storage = builder.AddAzureStorage("storage")
@@ -14,15 +17,16 @@ var storage = builder.AddAzureStorage("storage")
 
 var blobs = storage.AddBlobs("blobs");
 
-var deno = builder.AddDeno("frontend", "../../frontend", "dev").WithEndpoint("http", e => e.Port = 5173);
+var deno = builder.AddDeno("frontend", "../../frontend", "dev").WithEndpoint(5174, 5173, "http", "http");
 
 var api = builder.AddProject<Projects.WhatIsInMyFridge_Api>("api")
     .WithEndpoint("http", ep => ep.Port = 5000)
     .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
     .WithEnvironment("CosmosDb", cosmosDb)
-    .WithEnvironment("ALLOWED_ORIGINS", deno.GetEndpoint("http")) // <-- pass origin
+    .WithEnvironment("ALLOWED_ORIGINS", deno.GetEndpoint("http"))
     .WithReference(cosmosDb)
     .WithReference(blobs);
+
 
 
 builder.Build().Run();
