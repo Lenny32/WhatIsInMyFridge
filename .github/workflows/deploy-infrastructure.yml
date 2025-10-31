@@ -9,6 +9,7 @@ on:
         type: choice
         options:
           - test
+          - test2
           - prod
 
 jobs:
