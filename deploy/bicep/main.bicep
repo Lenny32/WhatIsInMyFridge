@@ -12,13 +12,13 @@ param location string = 'germanywestcentral'
 param logAnalyticsLocation string = 'germanywestcentral'
 
 @description('Cosmos DB account name')
-param cosmosAccountName string = 'cosmos-whatismyfridge-${environment}'
+param cosmosAccountName string = 'cosmos-${uniqueString(resourceGroup().id)}-${environment}'
 
 @description('Cosmos DB database name')
 param cosmosDatabaseName string = 'WhatIsInMyFridge'
 
 @description('Storage account name for blobs')
-param storageAccountName string = 'stwhatismyfridge${environment}'
+param storageAccountName string = 'st${uniqueString(resourceGroup().id)}${environment}'
 
 @description('Container registry server')
 param containerRegistryServer string = 'ghcr.io'
@@ -58,7 +58,7 @@ resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
     sku: {
       name: 'PerGB2018'
     }
-    retentionInDays: 14 // 2 weeks retention
+    retentionInDays: 30 // Minimum retention for PerGB2018 SKU
     workspaceCapping: {
       dailyQuotaGb: json('0.16') // ~5GB per month (free tier limit)
     }
