@@ -11,7 +11,6 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
   build-and-push:
@@ -36,11 +35,15 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Set lowercase image name
+        id: image
+        run: echo "name=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
+
       - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: ${{ env.REGISTRY }}/${{ steps.image.outputs.name }}
           tags: |
             type=ref,event=branch
             type=ref,event=pr
@@ -70,7 +73,7 @@ jobs:
 
           ### Pull the image:
           ```bash
-          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          docker pull ${{ env.REGISTRY }}/${{ steps.image.outputs.name }}:latest
           ```
 
           ### Quick run (with defaults):
@@ -80,7 +83,7 @@ jobs:
             -p 80:80 \
             -e JWT_SECRET_KEY="your-secret-key-min-32-chars" \
             -e COSMOS_CONNECTION_STRING="your-cosmos-connection" \
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            ${{ env.REGISTRY }}/${{ steps.image.outputs.name }}:latest
           ```
 
           ### Run with all options:
@@ -95,7 +98,7 @@ jobs:
             -e CORS_ORIGINS="https://yourdomain.com,https://www.yourdomain.com" \
             -v whatsinmyfridge-data:/app/data \
             --restart unless-stopped \
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            ${{ env.REGISTRY }}/${{ steps.image.outputs.name }}:latest
           ```
 
           ### Using docker-compose:
@@ -125,7 +128,7 @@ jobs:
           Open http://localhost in your browser after container starts.
 
           ---
-          📦 Image: `${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest`
+          📦 Image: `${{ env.REGISTRY }}/${{ steps.image.outputs.name }}:latest`
           📝 See [DEPLOYMENT.md](https://github.com/${{ github.repository }}/blob/main/DEPLOYMENT.md) for more details
           EOF
 
@@ -136,6 +139,10 @@ jobs:
     if: github.event_name != 'pull_request'
 
     steps:
+      - name: Set lowercase image name
+        id: image
+        run: echo "name=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
+
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -144,7 +151,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Pull image
-        run: docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+        run: docker pull ${{ env.REGISTRY }}/${{ steps.image.outputs.name }}:latest
 
       - name: Run container
         run: |
@@ -153,7 +160,7 @@ jobs:
             -p 8080:80 \
             -e JWT_SECRET_KEY="test-secret-key-minimum-32-characters-long" \
             -e COSMOS_CONNECTION_STRING="AccountEndpoint=https://test.documents.azure.com:443/;AccountKey=test;" \
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            ${{ env.REGISTRY }}/${{ steps.image.outputs.name }}:latest
 
       - name: Wait for container to be healthy
         run: |
