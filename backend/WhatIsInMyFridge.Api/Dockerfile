@@ -12,11 +12,11 @@ EXPOSE 8081
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
-COPY ["backend/WhatIsInMyFridge.Api/WhatIsInMyFridge.Api.csproj", "backend/WhatIsInMyFridge.Api/"]
-COPY ["backend/WhatIsInMyFridge.ServiceDefaults/WhatIsInMyFridge.ServiceDefaults.csproj", "backend/WhatIsInMyFridge.ServiceDefaults/"]
-RUN dotnet restore "./backend/WhatIsInMyFridge.Api/WhatIsInMyFridge.Api.csproj"
+COPY ["WhatIsInMyFridge.Api/WhatIsInMyFridge.Api.csproj", "WhatIsInMyFridge.Api/"]
+COPY ["WhatIsInMyFridge.ServiceDefaults/WhatIsInMyFridge.ServiceDefaults.csproj", "WhatIsInMyFridge.ServiceDefaults/"]
+RUN dotnet restore "./WhatIsInMyFridge.Api/WhatIsInMyFridge.Api.csproj"
 COPY . .
-WORKDIR "/src/backend/WhatIsInMyFridge.Api"
+WORKDIR "/src/WhatIsInMyFridge.Api"
 RUN dotnet build "./WhatIsInMyFridge.Api.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
 # This stage is used to publish the service project to be copied to the final stage
