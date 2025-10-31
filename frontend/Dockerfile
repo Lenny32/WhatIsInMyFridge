@@ -1,5 +1,5 @@
 # Build stage
-FROM denoland/deno:2.0.6 AS build
+FROM denoland/deno:latest AS build
 WORKDIR /app
 
 # Copy package files
