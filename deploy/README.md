@@ -165,35 +165,39 @@ Both are automatically set to the frontend URL during deployment.
 
 ## Cost Optimization
 
-The infrastructure is optimized for cost:
+The infrastructure is **heavily optimized for minimal cost** - potentially **FREE** or near-free for light usage:
 
-### Test Environment
-- **Container Apps**: Scale to 0 when idle (no cost when not used)
-- **Cosmos DB**: Serverless mode (pay per request)
-- **Storage**: Standard LRS (lowest cost tier)
-- **Log Analytics**: 30-day retention
-
-### Prod Environment
-- **Container Apps**: Minimum 1 replica (always on)
-- **Cosmos DB**: Serverless mode
-- **Storage**: Standard LRS
-- **Log Analytics**: 30-day retention
+### All Environments (Test & Prod)
+- **Container Apps**: Scale to 0 when idle → **$0 when not in use** (180,000 free vCPU-seconds/month)
+  - Minimum CPU: 0.25 vCPU, Memory: 0.5 GB
+  - Max 1 replica to prevent runaway costs
+  - Auto-scales from 0 based on HTTP requests
+- **Cosmos DB**: Serverless mode → **Pay only for actual requests** (400 RU/s free tier available)
+- **Storage**: Cool tier, Standard LRS → **~$0.01/GB/month** for recipe photos
+- **Log Analytics**: 5GB/month cap → **5GB free tier** (should be sufficient for small apps)
+- **Application Insights**: Included with free tier (5GB/month)
 
 ### Estimated Monthly Costs
 
-**Test Environment (minimal usage):**
-- Container Apps: ~$0-5/month (mostly idle)
-- Cosmos DB: ~$0-10/month (serverless)
-- Storage: ~$0-5/month
-- Monitoring: ~$0-5/month
-- **Total: ~$0-25/month**
+**With Light Usage (personal/hobby project):**
+- Container Apps: **$0-2/month** (mostly within free tier, brief scaling)
+- Cosmos DB: **$0-3/month** (serverless pay-per-request, potentially free tier)
+- Storage: **$0-1/month** (cool tier, minimal photos)
+- Monitoring: **$0/month** (within free tier limits)
+- **Total: $0-6/month** 💰
 
-**Prod Environment (low-moderate usage):**
-- Container Apps: ~$15-30/month
-- Cosmos DB: ~$10-30/month
-- Storage: ~$5-15/month
-- Monitoring: ~$5-15/month
-- **Total: ~$35-90/month**
+**With Moderate Usage:**
+- Container Apps: ~$3-10/month
+- Cosmos DB: ~$5-15/month
+- Storage: ~$1-3/month
+- Monitoring: ~$0-2/month
+- **Total: ~$9-30/month**
+
+### Tips to Stay Near-Free:
+1. **Use only when needed** - Apps scale to 0 automatically after inactivity
+2. **Single environment** - Only deploy to `test` if you don't need production
+3. **Monitor usage** - Set Azure budget alerts at $5 and $10/month
+4. **Delete when inactive** - Delete resource group if not using for extended periods
 
 ## Monitoring and Logs
 

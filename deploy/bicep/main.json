@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.38.33.27573",
-      "templateHash": "14730023098776801354"
+      "templateHash": "17922813900804480920"
     }
   },
   "parameters": {
@@ -21,7 +21,7 @@
     },
     "location": {
       "type": "string",
-      "defaultValue": "austriaeast",
+      "defaultValue": "westeurope",
       "metadata": {
         "description": "Location for all resources"
       }
@@ -96,30 +96,14 @@
   },
   "resources": [
     {
-      "type": "Microsoft.OperationalInsights/workspaces",
-      "apiVersion": "2023-09-01",
-      "name": "[variables('logAnalyticsName')]",
-      "location": "[parameters('location')]",
-      "properties": {
-        "sku": {
-          "name": "PerGB2018"
-        },
-        "retentionInDays": 30
-      }
-    },
-    {
       "type": "Microsoft.Insights/components",
       "apiVersion": "2020-02-02",
       "name": "[variables('appInsightsName')]",
       "location": "[parameters('location')]",
       "kind": "web",
       "properties": {
-        "Application_Type": "web",
-        "WorkspaceResourceId": "[resourceId('Microsoft.OperationalInsights/workspaces', variables('logAnalyticsName'))]"
-      },
-      "dependsOn": [
-        "[resourceId('Microsoft.OperationalInsights/workspaces', variables('logAnalyticsName'))]"
-      ]
+        "Application_Type": "web"
+      }
     },
     {
       "type": "Microsoft.Storage/storageAccounts",
@@ -131,7 +115,7 @@
       },
       "kind": "StorageV2",
       "properties": {
-        "accessTier": "Hot",
+        "accessTier": "Cool",
         "allowBlobPublicAccess": false,
         "minimumTlsVersion": "TLS1_2"
       }
@@ -293,18 +277,7 @@
       "apiVersion": "2024-03-01",
       "name": "[variables('containerAppEnvName')]",
       "location": "[parameters('location')]",
-      "properties": {
-        "appLogsConfiguration": {
-          "destination": "log-analytics",
-          "logAnalyticsConfiguration": {
-            "customerId": "[reference(resourceId('Microsoft.OperationalInsights/workspaces', variables('logAnalyticsName')), '2023-09-01').customerId]",
-            "sharedKey": "[listKeys(resourceId('Microsoft.OperationalInsights/workspaces', variables('logAnalyticsName')), '2023-09-01').primarySharedKey]"
-          }
-        }
-      },
-      "dependsOn": [
-        "[resourceId('Microsoft.OperationalInsights/workspaces', variables('logAnalyticsName'))]"
-      ]
+      "properties": {}
     },
     {
       "type": "Microsoft.App/containerApps",
@@ -375,8 +348,8 @@
               "name": "backend",
               "image": "[parameters('backendImage')]",
               "resources": {
-                "cpu": "[json('0.5')]",
-                "memory": "1Gi"
+                "cpu": "[json('0.25')]",
+                "memory": "0.5Gi"
               },
               "env": [
                 {
@@ -419,8 +392,18 @@
             }
           ],
           "scale": {
-            "minReplicas": "[if(equals(parameters('environment'), 'prod'), 1, 0)]",
-            "maxReplicas": "[if(equals(parameters('environment'), 'prod'), 5, 2)]"
+            "minReplicas": 0,
+            "maxReplicas": 1,
+            "rules": [
+              {
+                "name": "http-scaling",
+                "http": {
+                  "metadata": {
+                    "concurrentRequests": "10"
+                  }
+                }
+              }
+            ]
           }
         }
       },
@@ -483,8 +466,18 @@
             }
           ],
           "scale": {
-            "minReplicas": "[if(equals(parameters('environment'), 'prod'), 1, 0)]",
-            "maxReplicas": "[if(equals(parameters('environment'), 'prod'), 3, 2)]"
+            "minReplicas": 0,
+            "maxReplicas": 1,
+            "rules": [
+              {
+                "name": "http-scaling",
+                "http": {
+                  "metadata": {
+                    "concurrentRequests": "10"
+                  }
+                }
+              }
+            ]
           }
         }
       },

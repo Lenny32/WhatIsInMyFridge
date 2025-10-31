@@ -14,14 +14,16 @@ var storage = builder.AddAzureStorage("storage")
 
 var blobs = storage.AddBlobs("blobs");
 
+var deno = builder.AddDeno("frontend", "../../frontend", "dev").WithEndpoint("http", e => e.Port = 5173);
+
 var api = builder.AddProject<Projects.WhatIsInMyFridge_Api>("api")
-    .WithHttpEndpoint(port: 5000, name: "http")
+    .WithEndpoint("http", ep => ep.Port = 5000)
     .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
+    .WithEnvironment("CosmosDb", cosmosDb)
+    .WithEnvironment("ALLOWED_ORIGINS", deno.GetEndpoint("http")) // <-- pass origin
     .WithReference(cosmosDb)
     .WithReference(blobs);
 
-builder.AddDeno("frontend", "../../frontend", "dev")
-    .WithReference(api);
 
 builder.Build().Run();
 

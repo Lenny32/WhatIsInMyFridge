@@ -17,66 +17,19 @@ using WhatIsInMyFridge.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Check if running with Aspire orchestration (AppHost)
-var useAspire = builder.Configuration.GetValue<bool>("UseAspire", false);
+builder.AddServiceDefaults();
 
-// Add Aspire service defaults only if configured
-if (useAspire)
+builder.AddCosmosDbContext<AppDbContext>("WhatIsInMyFridge");
+// Standalone mode - use direct connection string
+var blobConnectionString = builder.Configuration.GetConnectionString("blobs");
+    
+if (string.IsNullOrEmpty(blobConnectionString))
 {
-    builder.AddServiceDefaults();
+    throw new InvalidOperationException("Blob Storage connection string is required. Set ConnectionStrings:BlobStorage or BLOB_STORAGE_CONNECTION_STRING environment variable.");
 }
+    
+builder.Services.AddSingleton(new Azure.Storage.Blobs.BlobServiceClient(blobConnectionString));
 
-// Use /app/data in production (Docker), or ../data locally for photos
-var dataDir = builder.Environment.IsProduction() 
-    ? "/app/data" 
-    : Path.Combine(AppContext.BaseDirectory, "..", "data");
-Directory.CreateDirectory(dataDir);
-
-// Configure Cosmos DB
-if (useAspire)
-{
-    // Aspire will inject the connection string
-    // Connection string name matches the resource name in AppHost.cs
-    builder.AddCosmosDbContext<AppDbContext>("WhatIsInMyFridge");
-}
-else
-{
-    // Standalone mode - use direct connection string and database name
-    var cosmosConnectionString = builder.Configuration.GetConnectionString("CosmosDb") 
-        ?? Environment.GetEnvironmentVariable("COSMOS_CONNECTION_STRING");
-    var databaseName = builder.Configuration["CosmosDb:DatabaseName"] 
-        ?? Environment.GetEnvironmentVariable("COSMOS_DATABASE_NAME") 
-        ?? "WhatIsInMyFridge";
-    
-    if (string.IsNullOrEmpty(cosmosConnectionString))
-    {
-        throw new InvalidOperationException("Cosmos DB connection string is required. Set ConnectionStrings:CosmosDb or COSMOS_CONNECTION_STRING environment variable.");
-    }
-    
-    builder.Services.AddDbContext<AppDbContext>(options =>
-        options.UseCosmos(cosmosConnectionString, databaseName));
-}
-
-// Configure Azure Blob Storage
-if (useAspire)
-{
-    // Aspire will inject the connection string
-    // Connection name matches the resource name in AppHost.cs
-    builder.AddAzureBlobClient("blobs");
-}
-else
-{
-    // Standalone mode - use direct connection string
-    var blobConnectionString = builder.Configuration.GetConnectionString("BlobStorage") 
-        ?? Environment.GetEnvironmentVariable("BLOB_STORAGE_CONNECTION_STRING");
-    
-    if (string.IsNullOrEmpty(blobConnectionString))
-    {
-        throw new InvalidOperationException("Blob Storage connection string is required. Set ConnectionStrings:BlobStorage or BLOB_STORAGE_CONNECTION_STRING environment variable.");
-    }
-    
-    builder.Services.AddSingleton(new Azure.Storage.Blobs.BlobServiceClient(blobConnectionString));
-}
 
 
 builder.Services.AddScoped<UserStore>();
@@ -91,7 +44,7 @@ builder.Services.AddScoped<JwtTokenService>();
 builder.Services.AddSingleton<BlobStorageService>();
 
 // Configure JWT Authentication
-var jwtKey = builder.Configuration["Jwt:Key"] ?? Environment.GetEnvironmentVariable("JWT_SECRET_KEY") ?? "WhatIsInMyFridge-SuperSecretKey-ChangeInProduction-MinimumLength32Characters!";
+var jwtKey = builder.Configuration["Jwt:Key"] ?? Environment.GetEnvironmentVariable("JWT_SECRET_KEY")! ?? throw new InvalidOperationException("JWT secret key is required.");
 var jwtIssuer = builder.Configuration["Jwt:Issuer"]!;
 var jwtAudience = builder.Configuration["Jwt:Audience"]!;
 
@@ -117,12 +70,7 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddAuthorization();
 
 // Add CORS for custom domain and Azure Container Apps
-var allowedOrigins = new List<string>
-{
-    "http://localhost:5173",
-    "https://fridge.colen.at",
-    "https://colen.at"
-};
+var allowedOrigins = new List<string>();
 
 // Add origins from environment variable (for Azure Container Apps)
 var envOrigins = Environment.GetEnvironmentVariable("ALLOWED_ORIGINS");

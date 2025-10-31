@@ -6,7 +6,10 @@
 param environment string
 
 @description('Location for all resources')
-param location string = 'austriaeast'
+param location string = 'germanywestcentral'
+
+@description('Location for Log Analytics (must be a supported region)')
+param logAnalyticsLocation string = 'germanywestcentral'
 
 @description('Cosmos DB account name')
 param cosmosAccountName string = 'cosmos-whatismyfridge-${environment}'
@@ -47,15 +50,18 @@ var blobContainerName = 'recipe-photos'
 var frontendFqdn = '${frontendAppName}.${containerAppEnv.properties.defaultDomain}'
 var backendFqdn = '${backendAppName}.${containerAppEnv.properties.defaultDomain}'
 
-// Log Analytics Workspace
+// Log Analytics Workspace - Free tier with 5GB/month (in Germany)
 resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
   name: logAnalyticsName
-  location: location
+  location: logAnalyticsLocation
   properties: {
     sku: {
       name: 'PerGB2018'
     }
-    retentionInDays: 30
+    retentionInDays: 14 // 2 weeks retention
+    workspaceCapping: {
+      dailyQuotaGb: json('0.16') // ~5GB per month (free tier limit)
+    }
   }
 }
 
@@ -70,16 +76,16 @@ resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
   }
 }
 
-// Storage Account for Blob Storage
+// Storage Account for Blob Storage - Cheapest configuration
 resource storageAccount 'Microsoft.Storage/storageAccounts@2023-05-01' = {
   name: storageAccountName
   location: location
   sku: {
-    name: 'Standard_LRS'
+    name: 'Standard_LRS' // Cheapest redundancy option
   }
   kind: 'StorageV2'
   properties: {
-    accessTier: 'Hot'
+    accessTier: 'Cool' // Cheaper storage for infrequently accessed data
     allowBlobPublicAccess: false
     minimumTlsVersion: 'TLS1_2'
   }
@@ -300,8 +306,8 @@ resource backendApp 'Microsoft.App/containerApps@2024-03-01' = {
           name: 'backend'
           image: backendImage
           resources: {
-            cpu: json('0.5')
-            memory: '1Gi'
+            cpu: json('0.25') // Minimum CPU for lowest cost
+            memory: '0.5Gi'   // Minimum memory for lowest cost
           }
           env: [
             {
@@ -344,8 +350,18 @@ resource backendApp 'Microsoft.App/containerApps@2024-03-01' = {
         }
       ]
       scale: {
-        minReplicas: environment == 'prod' ? 1 : 0
-        maxReplicas: environment == 'prod' ? 5 : 2
+        minReplicas: 0 // Scale to 0 for all environments to minimize cost
+        maxReplicas: 1 // Limit to 1 replica maximum
+        rules: [
+          {
+            name: 'http-scaling'
+            http: {
+              metadata: {
+                concurrentRequests: '10'
+              }
+            }
+          }
+        ]
       }
     }
   }
@@ -390,8 +406,8 @@ resource frontendApp 'Microsoft.App/containerApps@2024-03-01' = {
           name: 'frontend'
           image: frontendImage
           resources: {
-            cpu: json('0.25')
-            memory: '0.5Gi'
+            cpu: json('0.25') // Minimum CPU
+            memory: '0.5Gi'   // Minimum memory
           }
           env: [
             {
@@ -402,8 +418,18 @@ resource frontendApp 'Microsoft.App/containerApps@2024-03-01' = {
         }
       ]
       scale: {
-        minReplicas: environment == 'prod' ? 1 : 0
-        maxReplicas: environment == 'prod' ? 3 : 2
+        minReplicas: 0 // Scale to 0 for all environments to minimize cost
+        maxReplicas: 1 // Limit to 1 replica maximum
+        rules: [
+          {
+            name: 'http-scaling'
+            http: {
+              metadata: {
+                concurrentRequests: '10'
+              }
+            }
+          }
+        ]
       }
     }
   }
