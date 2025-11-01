@@ -24,15 +24,18 @@ var cosmosDatabaseName = builder.Configuration["CosmosDb:DatabaseName"]
     ?? throw new InvalidOperationException("Cosmos DB database name is required. Set CosmosDb:DatabaseName or COSMOS_DATABASE_NAME.");
 
 builder.AddCosmosDbContext<AppDbContext>("WhatIsInMyFridge", cosmosDatabaseName);
-// Standalone mode - use direct connection string
-var blobConnectionString = builder.Configuration.GetConnectionString("blobs");
-    
-if (string.IsNullOrEmpty(blobConnectionString))
+
+var blobConnectionString = builder.Configuration["BlobStorage:ConnectionString"]
+    ?? builder.Configuration.GetConnectionString("BlobStorage")
+    ?? builder.Configuration.GetConnectionString("blobs")
+    ?? Environment.GetEnvironmentVariable("BLOB_STORAGE_CONNECTION_STRING");
+
+if (string.IsNullOrWhiteSpace(blobConnectionString))
 {
-    throw new InvalidOperationException("Blob Storage connection string is required. Set ConnectionStrings:BlobStorage or BLOB_STORAGE_CONNECTION_STRING environment variable.");
+    throw new InvalidOperationException("Blob Storage connection string is required. Set BlobStorage:ConnectionString, ConnectionStrings:BlobStorage, or BLOB_STORAGE_CONNECTION_STRING.");
 }
-    
-builder.Services.AddSingleton(new Azure.Storage.Blobs.BlobServiceClient(blobConnectionString));
+
+builder.Services.AddSingleton(new BlobServiceClient(blobConnectionString));
 
 
 
