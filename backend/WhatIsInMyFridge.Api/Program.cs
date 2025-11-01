@@ -19,7 +19,11 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
 
-builder.AddCosmosDbContext<AppDbContext>("WhatIsInMyFridge");
+var cosmosDatabaseName = builder.Configuration["CosmosDb:DatabaseName"]
+    ?? Environment.GetEnvironmentVariable("COSMOS_DATABASE_NAME")
+    ?? throw new InvalidOperationException("Cosmos DB database name is required. Set CosmosDb:DatabaseName or COSMOS_DATABASE_NAME.");
+
+builder.AddCosmosDbContext<AppDbContext>("WhatIsInMyFridge", cosmosDatabaseName);
 // Standalone mode - use direct connection string
 var blobConnectionString = builder.Configuration.GetConnectionString("blobs");
     
