@@ -23,11 +23,21 @@ var cosmosDatabaseName = builder.Configuration["CosmosDb:DatabaseName"]
     ?? Environment.GetEnvironmentVariable("COSMOS_DATABASE_NAME")
     ?? throw new InvalidOperationException("Cosmos DB database name is required. Set CosmosDb:DatabaseName or COSMOS_DATABASE_NAME.");
 
-builder.AddCosmosDbContext<AppDbContext>("WhatIsInMyFridge", cosmosDatabaseName);
+var cosmosConnectionString = builder.Configuration.GetConnectionString("WhatIsInMyFridge")
+    ?? builder.Configuration["CosmosDb:ConnectionString"]
+    ?? builder.Configuration["CosmosDb"]
+    ?? Environment.GetEnvironmentVariable("COSMOS_CONNECTION_STRING")
+    ?? Environment.GetEnvironmentVariable("COSMOSDB_CONNECTION_STRING")
+    ?? throw new InvalidOperationException("Cosmos DB connection string is required. Set ConnectionStrings:WhatIsInMyFridge, CosmosDb:ConnectionString, or COSMOS_CONNECTION_STRING.");
+
+// Set the connection string in configuration so Aspire can find it
+builder.Configuration["ConnectionStrings:WhatIsInMyFridge"] = cosmosConnectionString;
+
+builder.AddCosmosDbContext<AppDbContext>(
+    "WhatIsInMyFridge",
+    cosmosDatabaseName);
 
 var blobConnectionString = builder.Configuration["BlobStorage:ConnectionString"]
-    ?? builder.Configuration.GetConnectionString("BlobStorage")
-    ?? builder.Configuration.GetConnectionString("blobs")
     ?? Environment.GetEnvironmentVariable("BLOB_STORAGE_CONNECTION_STRING");
 
 if (string.IsNullOrWhiteSpace(blobConnectionString))

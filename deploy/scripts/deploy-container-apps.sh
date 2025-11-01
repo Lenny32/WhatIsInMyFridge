@@ -100,7 +100,10 @@ az containerapp update \
   --resource-group "${RESOURCE_GROUP}" \
   --image "${BACKEND_IMAGE}" \
   --revision-suffix "${REVISION_SUFFIX}" \
-  --set-env-vars "ALLOWED_ORIGINS=${ALLOWED_ORIGINS}" \
+  --set-env-vars \
+    "ALLOWED_ORIGINS=${ALLOWED_ORIGINS}" \
+    "BLOB_STORAGE_CONNECTION_STRING=secretref:blob-storage-connection-string" \
+    "COSMOS_CONNECTION_STRING=secretref:cosmos-connection-string" \
   >/dev/null
 
 BACKEND_FQDN="$(az containerapp show \
@@ -118,7 +121,9 @@ if [[ "${UPDATE_FRONTEND}" == true ]]; then
     --resource-group "${RESOURCE_GROUP}" \
     --image "${FRONTEND_IMAGE}" \
     --revision-suffix "${REVISION_SUFFIX}" \
-    --set-env-vars "VITE_API_BASE=https://${BACKEND_FQDN}" \
+    --set-env-vars \
+      "VITE_API_BASE=https://${BACKEND_FQDN}" \
+      "BLOB_STORAGE_CONNECTION_STRING=secretref:blob-storage-connection-string" \
     >/dev/null
 
   FRONTEND_FQDN="$(az containerapp show \
