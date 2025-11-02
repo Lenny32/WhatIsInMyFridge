@@ -1,6 +1,9 @@
 using Azure.Storage.Blobs;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.Azure.Cosmos;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using WhatIsInMyFridge.Api.HealthChecks;
 using WhatIsInMyFridge.Api.Services;
 
 namespace WhatIsInMyFridge.Api.Configuration;
@@ -16,10 +19,17 @@ internal static class WebApplicationBuilderExtensions
             DataConfiguration.CosmosConnectionName,
             cosmosSettings.DatabaseName);
 
+        builder.Services.AddSingleton(cosmosSettings);
+        builder.Services.AddSingleton(new CosmosClient(cosmosSettings.ConnectionString));
+
         var blobSettings = DataConfiguration.GetBlobStorageSettings(builder.Configuration);
         builder.Configuration[$"ConnectionStrings:{DataConfiguration.BlobConnectionName}"] = blobSettings.ConnectionString;
 
         builder.Services.AddSingleton(new BlobServiceClient(blobSettings.ConnectionString));
+
+        builder.Services.AddHealthChecks()
+            .AddCheck<CosmosDbHealthCheck>("cosmosdb", tags: ["ready"])
+            .AddCheck<BlobStorageHealthCheck>("blob-storage", tags: ["ready"]);
 
         return builder;
     }
