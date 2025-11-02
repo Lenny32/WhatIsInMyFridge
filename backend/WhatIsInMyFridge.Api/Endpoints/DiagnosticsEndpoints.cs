@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace WhatIsInMyFridge.Api.Endpoints;
 
@@ -14,8 +15,10 @@ internal static class DiagnosticsEndpoints
     {
         endpoints.MapGet(
             "/health",
-            async (HealthCheckService healthChecks, CancellationToken cancellationToken) =>
+            async (HealthCheckService healthChecks, CancellationToken cancellationToken, ILogger<Program> logger) =>
             {
+                logger.LogDebug("Health check requested");
+                
                 var report = await healthChecks.CheckHealthAsync(
                     registration => registration.Tags.Contains("ready"),
                     cancellationToken);
@@ -37,13 +40,19 @@ internal static class DiagnosticsEndpoints
                     ? StatusCodes.Status200OK
                     : StatusCodes.Status503ServiceUnavailable;
 
+                if (report.Status != HealthStatus.Healthy)
+                {
+                    logger.LogWarning("Health check failed with status {HealthStatus}", report.Status);
+                }
+
                 return Results.Json(response, statusCode: statusCode);
             });
 
         if (environment.IsDevelopment())
         {
-            endpoints.MapGet("/api/debug/throw-exception", () =>
+            endpoints.MapGet("/api/debug/throw-exception", (ILogger<Program> logger) =>
             {
+                logger.LogWarning("Test exception endpoint called");
                 throw new InvalidOperationException("This is a test exception to verify debug mode exception serialization");
             });
         }

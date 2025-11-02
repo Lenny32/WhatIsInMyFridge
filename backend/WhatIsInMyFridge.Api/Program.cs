@@ -6,6 +6,8 @@ var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceDefaults();
 builder.AddDataInfrastructure();
 
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+
 builder.Services
     .AddApplicationServices()
     .AddJwtAuthentication(builder.Configuration)
