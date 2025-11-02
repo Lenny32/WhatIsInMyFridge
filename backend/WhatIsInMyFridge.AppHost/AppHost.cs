@@ -22,7 +22,8 @@ var deno = builder.AddDeno("frontend", "../../frontend", "dev").WithEndpoint(517
 var api = builder.AddProject<Projects.WhatIsInMyFridge_Api>("api")
     .WithEndpoint("http", ep => ep.Port = 5000)
     .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
-    .WithEnvironment("CosmosDb", cosmosDb)
+    .WithEnvironment("ConnectionStrings__CosmosDb", cosmosDb)
+    .WithEnvironment("ConnectionStrings__BlobStorage", blobs)
     .WithEnvironment("ALLOWED_ORIGINS", deno.GetEndpoint("http"))
     .WithReference(cosmosDb)
     .WithReference(blobs);

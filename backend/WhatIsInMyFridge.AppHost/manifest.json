@@ -8,7 +8,7 @@
     },
     "WhatIsInMyFridge": {
       "type": "value.v0",
-      "connectionString": "AccountEndpoint={cosmos.outputs.connectionString};Database=WhatIsInMyFridge"
+      "connectionString": "{cosmos.outputs.connectionString};Database=WhatIsInMyFridge"
     },
     "storage": {
       "type": "azure.bicep.v0",
@@ -16,7 +16,7 @@
     },
     "blobs": {
       "type": "value.v0",
-      "connectionString": "{storage.outputs.blobEndpoint}"
+      "connectionString": "{storage.outputs.connectionString}"
     },
     "frontend": {
       "type": "executable.v0",
@@ -45,10 +45,9 @@
         "ASPNETCORE_FORWARDEDHEADERS_ENABLED": "true",
         "HTTP_PORTS": "{api.bindings.http.targetPort}",
         "ASPNETCORE_ENVIRONMENT": "Development",
-        "CosmosDb": "{WhatIsInMyFridge.connectionString}",
         "ALLOWED_ORIGINS": "{frontend.bindings.http.url}",
-        "ConnectionStrings__WhatIsInMyFridge": "{WhatIsInMyFridge.connectionString}",
-        "ConnectionStrings__blobs": "{blobs.connectionString}"
+        "ConnectionStrings__CosmosDb": "{WhatIsInMyFridge.connectionString}",
+        "ConnectionStrings__BlobStorage": "{blobs.connectionString}"
       },
       "bindings": {
         "http": {

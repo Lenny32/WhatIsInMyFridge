@@ -11,15 +11,6 @@ param location string = 'germanywestcentral'
 @description('Location for Log Analytics (must be a supported region)')
 param logAnalyticsLocation string = 'germanywestcentral'
 
-@description('Cosmos DB account name')
-param cosmosAccountName string = 'cosmos-${uniqueString(resourceGroup().id)}-${environment}'
-
-@description('Cosmos DB database name')
-param cosmosDatabaseName string = 'WhatIsInMyFridge'
-
-@description('Storage account name for blobs')
-param storageAccountName string = 'st${uniqueString(resourceGroup().id)}${environment}'
-
 @description('Container registry server')
 param containerRegistryServer string = 'ghcr.io'
 
@@ -49,6 +40,9 @@ var frontendAppName = 'ca-frontend-${environment}'
 var backendAppName = 'ca-backend-${environment}'
 var logAnalyticsName = 'log-whatismyfridge-${environment}'
 var appInsightsName = 'ai-whatismyfridge-${environment}'
+var cosmosAccountName = 'cosmos-${uniqueString(resourceGroup().id)}-${environment}'
+var cosmosDatabaseName = 'WhatIsInMyFridge'
+var storageAccountName = 'st${uniqueString(resourceGroup().id)}${environment}'
 var blobContainerName = 'recipe-photos'
 var frontendFqdn = '${frontendAppName}.${containerAppEnv.properties.defaultDomain}'
 var backendFqdn = '${backendAppName}.${containerAppEnv.properties.defaultDomain}'
@@ -294,6 +288,10 @@ resource backendApp 'Microsoft.App/containerApps@2024-03-01' = {
           value: cosmosAccount.listConnectionStrings().connectionStrings[0].connectionString
         }
         {
+          name: 'cosmos-connection-string-with-db'
+          value: '${cosmosAccount.listConnectionStrings().connectionStrings[0].connectionString};Database=${cosmosDatabaseName}'
+        }
+        {
           name: 'blob-storage-connection-string'
           value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};AccountKey=${storageAccount.listKeys().keys[0].value};EndpointSuffix=core.windows.net'
         }
@@ -323,12 +321,36 @@ resource backendApp 'Microsoft.App/containerApps@2024-03-01' = {
               secretRef: 'cosmos-connection-string'
             }
             {
+              name: 'ConnectionStrings__CosmosDb'
+              secretRef: 'cosmos-connection-string-with-db'
+            }
+            {
+              name: 'CosmosDb__ConnectionString'
+              secretRef: 'cosmos-connection-string'
+            }
+            {
+              name: 'CosmosDb__DatabaseName'
+              value: cosmosDatabaseName
+            }
+            {
               name: 'COSMOS_DATABASE_NAME'
               value: cosmosDatabaseName
             }
             {
               name: 'BLOB_STORAGE_CONNECTION_STRING'
               secretRef: 'blob-storage-connection-string'
+            }
+            {
+              name: 'ConnectionStrings__BlobStorage'
+              secretRef: 'blob-storage-connection-string'
+            }
+            {
+              name: 'BlobStorage__ConnectionString'
+              secretRef: 'blob-storage-connection-string'
+            }
+            {
+              name: 'BlobStorage__ContainerName'
+              value: blobContainerName
             }
             {
               name: 'JWT_SECRET_KEY'

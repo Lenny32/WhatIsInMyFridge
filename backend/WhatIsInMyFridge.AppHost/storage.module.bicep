@@ -10,7 +10,7 @@ resource storage 'Microsoft.Storage/storageAccounts@2024-01-01' = {
   }
   properties: {
     accessTier: 'Hot'
-    allowSharedKeyAccess: false
+    allowSharedKeyAccess: true
     minimumTlsVersion: 'TLS1_2'
     networkAcls: {
       defaultAction: 'Allow'
@@ -21,6 +21,8 @@ resource storage 'Microsoft.Storage/storageAccounts@2024-01-01' = {
   }
 }
 
+var storageKey = listKeys(storage.id, '2023-01-01').keys[0].value
+
 output blobEndpoint string = storage.properties.primaryEndpoints.blob
 
 output queueEndpoint string = storage.properties.primaryEndpoints.queue
@@ -28,3 +30,5 @@ output queueEndpoint string = storage.properties.primaryEndpoints.queue
 output tableEndpoint string = storage.properties.primaryEndpoints.table
 
 output name string = storage.name
+
+output connectionString string = 'DefaultEndpointsProtocol=https;AccountName=${storage.name};AccountKey=${storageKey};EndpointSuffix=${environment().suffixes.storage}'

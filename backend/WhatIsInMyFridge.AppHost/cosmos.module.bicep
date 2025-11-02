@@ -20,7 +20,7 @@ resource cosmos 'Microsoft.DocumentDB/databaseAccounts@2024-08-15' = {
       defaultConsistencyLevel: 'Session'
     }
     databaseAccountOfferType: 'Standard'
-    disableLocalAuth: true
+    disableLocalAuth: false
   }
   kind: 'GlobalDocumentDB'
   tags: {
@@ -39,6 +39,9 @@ resource WhatIsInMyFridge 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases@20
   parent: cosmos
 }
 
-output connectionString string = cosmos.properties.documentEndpoint
+var accountKey = listKeys(cosmos.id, cosmos.apiVersion).primaryMasterKey
+var endpoint = cosmos.properties.documentEndpoint
+
+output connectionString string = 'AccountEndpoint=${endpoint};AccountKey=${accountKey}'
 
 output name string = cosmos.name
