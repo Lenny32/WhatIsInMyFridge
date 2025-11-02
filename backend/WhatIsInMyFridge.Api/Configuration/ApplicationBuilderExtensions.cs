@@ -10,7 +10,7 @@ internal static class ApplicationBuilderExtensions
 {
     public static IApplicationBuilder UseDevelopmentExceptionSerialization(this IApplicationBuilder app)
     {
-        app.UseExceptionHandler();
+        app.UseExceptionHandler(_ => { }); // Use registered IExceptionHandler implementations
         return app;
     }
 
