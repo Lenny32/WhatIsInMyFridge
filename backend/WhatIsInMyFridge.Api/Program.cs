@@ -17,7 +17,7 @@ builder.Services
 
 var app = builder.Build();
 
-await app.EnsureCosmosDatabaseAsync();
+//await app.EnsureCosmosDatabaseAsync();
 app.UseDevelopmentExceptionSerialization();
 
 app.UseCors();
