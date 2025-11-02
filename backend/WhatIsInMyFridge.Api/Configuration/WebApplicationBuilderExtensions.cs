@@ -20,7 +20,12 @@ internal static class WebApplicationBuilderExtensions
             cosmosSettings.DatabaseName);
 
         builder.Services.AddSingleton(cosmosSettings);
-        builder.Services.AddSingleton(new CosmosClient(cosmosSettings.ConnectionString));
+        builder.Services.AddSingleton(new CosmosClient(
+            cosmosSettings.ConnectionString,
+            new CosmosClientOptions
+            {
+                ConnectionMode = ConnectionMode.Gateway
+            }));
 
         var blobSettings = DataConfiguration.GetBlobStorageSettings(builder.Configuration);
         builder.Configuration[$"ConnectionStrings:{DataConfiguration.BlobConnectionName}"] = blobSettings.ConnectionString;
