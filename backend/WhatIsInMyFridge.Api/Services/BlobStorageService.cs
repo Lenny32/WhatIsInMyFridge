@@ -1,5 +1,6 @@
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
+using Microsoft.Extensions.Logging;
 
 namespace WhatIsInMyFridge.Api.Services;
 
@@ -9,8 +10,13 @@ public sealed class BlobStorageService
     private readonly string _containerName;
     private readonly bool _useBlobStorage;
     private readonly string _localPhotosPath;
+    private readonly ILogger<BlobStorageService> _logger;
 
-    public BlobStorageService(BlobServiceClient? blobServiceClient, IConfiguration configuration, IWebHostEnvironment environment)
+    public BlobStorageService(
+        BlobServiceClient? blobServiceClient, 
+        IConfiguration configuration, 
+        IWebHostEnvironment environment,
+        ILogger<BlobStorageService> logger)
     {
         // Aspire injects BlobServiceClient if available (emulator or cloud)
         // Otherwise, fall back to local file storage
@@ -26,10 +32,16 @@ public sealed class BlobStorageService
         Directory.CreateDirectory(_localPhotosPath);
 
         _useBlobStorage = _blobServiceClient != null;
+        _logger = logger;
+        
+        _logger.LogInformation("BlobStorageService initialized. Using blob storage: {UseBlobStorage}, Local path: {LocalPath}", 
+            _useBlobStorage, _localPhotosPath);
     }
 
     public async Task<string> UploadPhotoAsync(Stream photoStream, string fileName, string contentType)
     {
+        _logger.LogInformation("Uploading photo {FileName} with content type {ContentType}", fileName, contentType);
+        
         if (_useBlobStorage && _blobServiceClient != null)
         {
             var containerClient = _blobServiceClient.GetBlobContainerClient(_containerName);
@@ -38,6 +50,7 @@ public sealed class BlobStorageService
             var blobClient = containerClient.GetBlobClient(fileName);
             await blobClient.UploadAsync(photoStream, new BlobHttpHeaders { ContentType = contentType });
 
+            _logger.LogInformation("Photo {FileName} uploaded to blob storage: {Uri}", fileName, blobClient.Uri);
             return blobClient.Uri.ToString();
         }
         else
@@ -48,12 +61,15 @@ public sealed class BlobStorageService
             {
                 await photoStream.CopyToAsync(fileStream);
             }
+            _logger.LogInformation("Photo {FileName} saved to local storage: {Path}", fileName, filePath);
             return $"/api/photos/{fileName}";
         }
     }
 
     public async Task DeletePhotoAsync(string photoId)
     {
+        _logger.LogInformation("Deleting photo {PhotoId}", photoId);
+        
         if (_useBlobStorage && _blobServiceClient != null)
         {
             var containerClient = _blobServiceClient.GetBlobContainerClient(_containerName);
@@ -64,7 +80,11 @@ public sealed class BlobStorageService
             {
                 var fileName = $"{photoId}{ext}";
                 var blobClient = containerClient.GetBlobClient(fileName);
-                await blobClient.DeleteIfExistsAsync();
+                var deleted = await blobClient.DeleteIfExistsAsync();
+                if (deleted)
+                {
+                    _logger.LogInformation("Deleted photo {PhotoId} from blob storage", fileName);
+                }
             }
         }
         else
@@ -74,12 +94,15 @@ public sealed class BlobStorageService
             foreach (var file in matchingFiles)
             {
                 File.Delete(file);
+                _logger.LogInformation("Deleted photo from local storage: {Path}", file);
             }
         }
     }
 
     public async Task<(byte[] fileBytes, string contentType)?> GetPhotoAsync(string fileName)
     {
+        _logger.LogDebug("Retrieving photo {FileName}", fileName);
+        
         if (_useBlobStorage && _blobServiceClient != null)
         {
             var containerClient = _blobServiceClient.GetBlobContainerClient(_containerName);
@@ -87,6 +110,7 @@ public sealed class BlobStorageService
 
             if (!await blobClient.ExistsAsync())
             {
+                _logger.LogWarning("Photo {FileName} not found in blob storage", fileName);
                 return null;
             }
 
@@ -94,6 +118,7 @@ public sealed class BlobStorageService
             using var memoryStream = new MemoryStream();
             await downloadResult.Value.Content.CopyToAsync(memoryStream);
             
+            _logger.LogDebug("Photo {FileName} retrieved from blob storage", fileName);
             return (memoryStream.ToArray(), downloadResult.Value.ContentType);
         }
         else
@@ -102,6 +127,7 @@ public sealed class BlobStorageService
             var filePath = Path.Combine(_localPhotosPath, fileName);
             if (!File.Exists(filePath))
             {
+                _logger.LogWarning("Photo {FileName} not found in local storage", fileName);
                 return null;
             }
 
@@ -115,6 +141,7 @@ public sealed class BlobStorageService
             };
 
             var fileBytes = await File.ReadAllBytesAsync(filePath);
+            _logger.LogDebug("Photo {FileName} retrieved from local storage", fileName);
             return (fileBytes, contentType);
         }
     }

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using WhatIsInMyFridge.Api.Dtos;
 using WhatIsInMyFridge.Api.Models;
 
@@ -7,14 +8,17 @@ namespace WhatIsInMyFridge.Api.Services;
 public sealed class FoodInventoryStore
 {
     private readonly AppDbContext _context;
+    private readonly ILogger<FoodInventoryStore> _logger;
 
-    public FoodInventoryStore(AppDbContext context)
+    public FoodInventoryStore(AppDbContext context, ILogger<FoodInventoryStore> logger)
     {
         _context = context;
+        _logger = logger;
     }
 
     public async Task<IReadOnlyCollection<FoodItem>> GetItemsAsync(string householdId, StorageLocation? location = null)
     {
+        _logger.LogDebug("Retrieving food items for household {HouseholdId}, location {Location}", householdId, location?.ToString() ?? "all");
         var query = _context.FoodItems.Where(item => item.HouseholdId == householdId);
         
         if (location.HasValue)
@@ -22,15 +26,20 @@ public sealed class FoodInventoryStore
             query = query.Where(item => item.Location == location.Value);
         }
 
-        return await query.ToArrayAsync();
+        var items = await query.ToArrayAsync();
+        _logger.LogDebug("Retrieved {Count} food items for household {HouseholdId}", items.Length, householdId);
+        return items;
     }
 
     public async Task<IReadOnlyCollection<FoodItem>> GetToBuyListAsync(string householdId)
     {
-        return await _context.FoodItems
+        _logger.LogDebug("Retrieving to-buy list for household {HouseholdId}", householdId);
+        var items = await _context.FoodItems
             .Where(item => item.HouseholdId == householdId 
                 && item.Quantity <= item.RestockThreshold)
             .ToArrayAsync();
+        _logger.LogDebug("Retrieved {Count} items to buy for household {HouseholdId}", items.Length, householdId);
+        return items;
     }
 
     public async Task<FoodItem?> GetByIdAsync(string id)
@@ -40,6 +49,7 @@ public sealed class FoodInventoryStore
 
     public async Task<FoodItem> CreateAsync(string householdId, CreateFoodItemRequest request)
     {
+        _logger.LogInformation("Creating food item {Name} for household {HouseholdId}", request.Name, householdId);
         var now = DateTimeOffset.UtcNow;
         var item = new FoodItem
         {
@@ -58,13 +68,19 @@ public sealed class FoodInventoryStore
         
         _context.FoodItems.Add(item);
         await _context.SaveChangesAsync();
+        _logger.LogInformation("Food item {ItemId} created successfully", item.Id);
         return item;
     }
 
     public async Task<FoodItem?> UpdateAsync(string id, UpdateFoodItemRequest request)
     {
+        _logger.LogInformation("Updating food item {ItemId}", id);
         var existing = await _context.FoodItems.FindAsync(id);
-        if (existing == null) return null;
+        if (existing == null)
+        {
+            _logger.LogWarning("Update failed: Food item {ItemId} not found", id);
+            return null;
+        }
 
         existing.Name = request.Name is { Length: > 0 } name ? name.Trim() : existing.Name;
         existing.Location = request.Location ?? existing.Location;
@@ -77,16 +93,23 @@ public sealed class FoodInventoryStore
         existing.UpdatedAt = DateTimeOffset.UtcNow;
 
         await _context.SaveChangesAsync();
+        _logger.LogInformation("Food item {ItemId} updated successfully", id);
         return existing;
     }
 
     public async Task<bool> DeleteAsync(string id)
     {
+        _logger.LogInformation("Deleting food item {ItemId}", id);
         var item = await _context.FoodItems.FindAsync(id);
-        if (item == null) return false;
+        if (item == null)
+        {
+            _logger.LogWarning("Delete failed: Food item {ItemId} not found", id);
+            return false;
+        }
 
         _context.FoodItems.Remove(item);
         await _context.SaveChangesAsync();
+        _logger.LogInformation("Food item {ItemId} deleted successfully", id);
         return true;
     }
 }

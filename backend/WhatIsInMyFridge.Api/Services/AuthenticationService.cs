@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using WhatIsInMyFridge.Api.Models;
 
 namespace WhatIsInMyFridge.Api.Services;
@@ -7,35 +8,49 @@ public sealed class AuthenticationService
     private readonly UserStore _userStore;
     private readonly HouseholdStore _householdStore;
     private readonly PasswordHasher _passwordHasher;
+    private readonly ILogger<AuthenticationService> _logger;
 
-    public AuthenticationService(UserStore userStore, HouseholdStore householdStore, PasswordHasher passwordHasher)
+    public AuthenticationService(
+        UserStore userStore, 
+        HouseholdStore householdStore, 
+        PasswordHasher passwordHasher,
+        ILogger<AuthenticationService> logger)
     {
         _userStore = userStore;
         _householdStore = householdStore;
         _passwordHasher = passwordHasher;
+        _logger = logger;
     }
 
     public async Task<User?> AuthenticateAsync(string email, string password)
     {
+        _logger.LogInformation("Attempting authentication for user {Email}", email);
+        
         var user = await _userStore.GetByEmailAsync(email);
         if (user == null)
         {
+            _logger.LogWarning("Authentication failed: User not found for email {Email}", email);
             return null;
         }
 
         if (!_passwordHasher.VerifyPassword(password, user.PasswordHash))
         {
+            _logger.LogWarning("Authentication failed: Invalid password for user {UserId}", user.Id);
             return null;
         }
 
+        _logger.LogInformation("User {UserId} authenticated successfully", user.Id);
         return user;
     }
 
     public async Task<(User user, Household household)?> RegisterAsync(string email, string password, string name, string householdName)
     {
+        _logger.LogInformation("Starting registration for user {Email} with household {HouseholdName}", email, householdName);
+        
         var existing = await _userStore.GetByEmailAsync(email);
         if (existing != null)
         {
+            _logger.LogWarning("Registration failed: Email {Email} already exists", email);
             return null;
         }
 
@@ -59,29 +74,36 @@ public sealed class AuthenticationService
         await _householdStore.CreateAsync(household);
         await _userStore.CreateAsync(user);
 
+        _logger.LogInformation("User {UserId} registered successfully with household {HouseholdId}", user.Id, household.Id);
         return (user, household);
     }
 
     public async Task<ApplicationContext?> BuildContextAsync(string userId, string? householdId = null)
     {
+        _logger.LogDebug("Building application context for user {UserId}, household {HouseholdId}", userId, householdId ?? "current");
+        
         var user = await _userStore.GetByIdAsync(userId);
         if (user == null)
         {
+            _logger.LogWarning("Failed to build context: User {UserId} not found", userId);
             return null;
         }
 
         var targetHouseholdId = householdId ?? user.CurrentHouseholdId;
         if (string.IsNullOrEmpty(targetHouseholdId))
         {
+            _logger.LogWarning("Failed to build context: No household ID for user {UserId}", userId);
             return null;
         }
 
         var household = await _householdStore.GetByIdAsync(targetHouseholdId);
         if (household == null || !household.MemberIds.Contains(userId))
         {
+            _logger.LogWarning("Failed to build context: User {UserId} not member of household {HouseholdId}", userId, targetHouseholdId);
             return null;
         }
 
+        _logger.LogDebug("Successfully built context for user {UserId} in household {HouseholdId}", userId, household.Id);
         return new ApplicationContext
         {
             User = user,
