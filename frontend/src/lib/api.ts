@@ -6,21 +6,24 @@ import type { paths } from "./api-types";
 // Placeholder replaced at runtime in container when VITE_API_BASE is provided
 const API_BASE_PLACEHOLDER = "__VITE_API_BASE__";
 
-function resolveApiBase(): string {
-  const fromVite = import.meta.env.VITE_API_BASE;
-
-  if (fromVite && fromVite !== API_BASE_PLACEHOLDER) {
-    return fromVite;
+function normalizeBase(value: string | undefined): string | undefined {
+  if (!value) {
+    return undefined;
   }
 
-  if (API_BASE_PLACEHOLDER !== "__VITE_API_BASE__") {
-    return API_BASE_PLACEHOLDER;
+  // When running in a container the placeholder literal gets swapped out by docker-entrypoint.
+  // If the placeholder is still present (contains VITE_API_BASE) we treat it as "not configured".
+  if (value.includes("VITE_API_BASE")) {
+    return undefined;
   }
 
-  return "";
+  return value;
 }
 
-const API_BASE = resolveApiBase();
+const API_BASE =
+  normalizeBase(import.meta.env.VITE_API_BASE?.trim()) ??
+  normalizeBase(API_BASE_PLACEHOLDER) ??
+  "";
 
 /**
  * Debug error information attached to errors when the backend is running in development mode.
