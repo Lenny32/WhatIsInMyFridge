@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using WhatIsInMyFridge.Api.Dtos;
 using WhatIsInMyFridge.Api.Models;
 
@@ -7,18 +8,22 @@ namespace WhatIsInMyFridge.Api.Services;
 public sealed class GroceryListStore
 {
     private readonly AppDbContext _context;
+    private readonly ILogger<GroceryListStore> _logger;
 
-    public GroceryListStore(AppDbContext context)
+    public GroceryListStore(AppDbContext context, ILogger<GroceryListStore> logger)
     {
         _context = context;
+        _logger = logger;
     }
 
     public async Task<IReadOnlyCollection<GroceryItem>> GetAllAsync(string householdId)
     {
+        _logger.LogDebug("Retrieving grocery items for household {HouseholdId}", householdId);
         var items = await _context.GroceryItems
             .Where(item => item.HouseholdId == householdId)
             .ToArrayAsync();
         
+        _logger.LogDebug("Retrieved {Count} grocery items for household {HouseholdId}", items.Length, householdId);
         return items
             .OrderBy(item => item.IsPurchased)
             .ThenByDescending(item => item.CreatedAt)
@@ -32,6 +37,7 @@ public sealed class GroceryListStore
 
     public async Task<GroceryItem> CreateAsync(string householdId, CreateGroceryItemRequest request)
     {
+        _logger.LogInformation("Creating grocery item {Name} for household {HouseholdId}", request.Name, householdId);
         var now = DateTimeOffset.UtcNow;
         var item = new GroceryItem
         {
@@ -48,13 +54,19 @@ public sealed class GroceryListStore
 
         _context.GroceryItems.Add(item);
         await _context.SaveChangesAsync();
+        _logger.LogInformation("Grocery item {ItemId} created successfully", item.Id);
         return item;
     }
 
     public async Task<GroceryItem?> UpdateAsync(string id, UpdateGroceryItemRequest request)
     {
+        _logger.LogInformation("Updating grocery item {ItemId}", id);
         var existing = await _context.GroceryItems.FindAsync(id);
-        if (existing == null) return null;
+        if (existing == null)
+        {
+            _logger.LogWarning("Update failed: Grocery item {ItemId} not found", id);
+            return null;
+        }
 
         existing.Name = request.Name is { Length: > 0 } name ? name.Trim() : existing.Name;
         existing.Quantity = request.Quantity ?? existing.Quantity;
@@ -64,27 +76,36 @@ public sealed class GroceryListStore
         existing.UpdatedAt = DateTimeOffset.UtcNow;
 
         await _context.SaveChangesAsync();
+        _logger.LogInformation("Grocery item {ItemId} updated successfully", id);
         return existing;
     }
 
     public async Task<bool> DeleteAsync(string id)
     {
+        _logger.LogInformation("Deleting grocery item {ItemId}", id);
         var item = await _context.GroceryItems.FindAsync(id);
-        if (item == null) return false;
+        if (item == null)
+        {
+            _logger.LogWarning("Delete failed: Grocery item {ItemId} not found", id);
+            return false;
+        }
 
         _context.GroceryItems.Remove(item);
         await _context.SaveChangesAsync();
+        _logger.LogInformation("Grocery item {ItemId} deleted successfully", id);
         return true;
     }
 
     public async Task<int> ClearPurchasedAsync(string householdId)
     {
+        _logger.LogInformation("Clearing purchased items for household {HouseholdId}", householdId);
         var purchasedItems = await _context.GroceryItems
             .Where(item => item.HouseholdId == householdId && item.IsPurchased)
             .ToArrayAsync();
 
         _context.GroceryItems.RemoveRange(purchasedItems);
         await _context.SaveChangesAsync();
+        _logger.LogInformation("Cleared {Count} purchased items for household {HouseholdId}", purchasedItems.Length, householdId);
         return purchasedItems.Length;
     }
 }

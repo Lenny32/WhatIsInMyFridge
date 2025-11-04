@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.Logging;
 using WhatIsInMyFridge.Api.Dtos;
 using WhatIsInMyFridge.Api.Infrastructure;
 using WhatIsInMyFridge.Api.Services;
@@ -16,20 +17,26 @@ internal static class AuthEndpoints
     {
         var group = endpoints.MapGroup("/api/auth");
 
-        group.MapPost("/register", async Task<IResult> (RegisterRequest request, AuthenticationService authService, JwtTokenService jwtTokenService) =>
+        group.MapPost("/register", async Task<IResult> (RegisterRequest request, AuthenticationService authService, JwtTokenService jwtTokenService, ILogger<Program> logger) =>
         {
+            logger.LogInformation("User registration attempt for email: {Email}", request.Email);
+            
             if (!ValidationHelper.TryValidate(request, out var errors))
             {
+                logger.LogWarning("Invalid registration request for email: {Email}", request.Email);
                 return Results.ValidationProblem(errors);
             }
 
             var result = await authService.RegisterAsync(request.Email, request.Password, request.Name, request.HouseholdName);
             if (result == null)
             {
+                logger.LogWarning("Registration failed - User with email {Email} already exists", request.Email);
                 return Results.BadRequest(new { error = "User with this email already exists" });
             }
 
             var token = jwtTokenService.GenerateToken(result.Value.user.Id, result.Value.household.Id);
+            
+            logger.LogInformation("User {UserId} successfully registered with household {HouseholdId}", result.Value.user.Id, result.Value.household.Id);
 
             return Results.Ok(new
             {
@@ -46,26 +53,33 @@ internal static class AuthEndpoints
             });
         });
 
-        group.MapPost("/login", async Task<IResult> (LoginRequest request, AuthenticationService authService, JwtTokenService jwtTokenService) =>
+        group.MapPost("/login", async Task<IResult> (LoginRequest request, AuthenticationService authService, JwtTokenService jwtTokenService, ILogger<Program> logger) =>
         {
+            logger.LogInformation("Login attempt for email: {Email}", request.Email);
+            
             if (!ValidationHelper.TryValidate(request, out var errors))
             {
+                logger.LogWarning("Invalid login request for email: {Email}", request.Email);
                 return Results.ValidationProblem(errors);
             }
 
             var user = await authService.AuthenticateAsync(request.Email, request.Password);
             if (user == null)
             {
+                logger.LogWarning("Failed login attempt for email: {Email}", request.Email);
                 return Results.Unauthorized();
             }
 
             var householdId = user.CurrentHouseholdId ?? user.HouseholdIds.FirstOrDefault();
             if (string.IsNullOrEmpty(householdId))
             {
+                logger.LogWarning("User {UserId} has no household", user.Id);
                 return Results.BadRequest(new { error = "User is not part of any household" });
             }
 
             var token = jwtTokenService.GenerateToken(user.Id, householdId);
+            
+            logger.LogInformation("User {UserId} successfully logged in to household {HouseholdId}", user.Id, householdId);
 
             return Results.Ok(new
             {
@@ -81,19 +95,28 @@ internal static class AuthEndpoints
             });
         });
 
-        group.MapPost("/logout", () => Results.NoContent());
-
-        group.MapGet("/me", async Task<IResult> (HttpContext httpContext, UserStore userStore, HouseholdStore householdStore) =>
+        group.MapPost("/logout", (ILogger<Program> logger, HttpContext httpContext) => 
         {
             var userId = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            logger.LogInformation("User {UserId} logged out", userId);
+            return Results.NoContent();
+        });
+
+        group.MapGet("/me", async Task<IResult> (HttpContext httpContext, UserStore userStore, HouseholdStore householdStore, ILogger<Program> logger) =>
+        {
+            var userId = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            logger.LogInformation("Getting current user info for user: {UserId}", userId);
+            
             if (string.IsNullOrEmpty(userId))
             {
+                logger.LogWarning("Unauthorized access to /me endpoint");
                 return Results.Unauthorized();
             }
 
             var user = await userStore.GetByIdAsync(userId);
             if (user == null)
             {
+                logger.LogWarning("User {UserId} not found in database", userId);
                 return Results.Unauthorized();
             }
 
