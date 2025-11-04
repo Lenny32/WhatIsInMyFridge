@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Text;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.Configuration;
@@ -34,6 +33,8 @@ internal static class ServiceCollectionExtensions
         var jwtKey = configuration["Jwt:Key"]
             ?? Environment.GetEnvironmentVariable("JWT_SECRET_KEY")
             ?? throw new InvalidOperationException("JWT secret key is required.");
+        var signingKeyBytes = JwtKeyUtility.GetSigningKeyBytes(jwtKey);
+        var signingKey = new SymmetricSecurityKey(signingKeyBytes);
         var jwtIssuer = configuration["Jwt:Issuer"]
             ?? throw new InvalidOperationException("Jwt:Issuer configuration is required.");
         var jwtAudience = configuration["Jwt:Audience"]
@@ -54,7 +55,7 @@ internal static class ServiceCollectionExtensions
                 ValidateIssuerSigningKey = true,
                 ValidIssuer = jwtIssuer,
                 ValidAudience = jwtAudience,
-                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+                IssuerSigningKey = signingKey
             };
         });
 

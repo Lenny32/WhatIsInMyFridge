@@ -1,6 +1,5 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using System.Text;
 using Microsoft.IdentityModel.Tokens;
 
 namespace WhatIsInMyFridge.Api.Services;
@@ -16,7 +15,12 @@ public sealed class JwtTokenService
 
     public string GenerateToken(string userId, string householdId, bool isAdmin = false)
     {
-        var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!));
+        var rawKey = _configuration["Jwt:Key"]
+            ?? Environment.GetEnvironmentVariable("JWT_SECRET_KEY")
+            ?? throw new InvalidOperationException("JWT secret key is required.");
+
+        var keyBytes = JwtKeyUtility.GetSigningKeyBytes(rawKey);
+        var securityKey = new SymmetricSecurityKey(keyBytes);
         var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
 
         var claims = new List<Claim>

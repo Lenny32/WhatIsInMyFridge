@@ -314,7 +314,7 @@ resource backendApp 'Microsoft.App/containerApps@2024-03-01' = {
           env: [
             {
               name: 'ASPNETCORE_ENVIRONMENT'
-              value: environment == 'prod' ? 'Production' : 'Development'
+              value: environment == 'prod' ? 'Production' : 'Staging'
             }
             {
               name: 'COSMOS_CONNECTION_STRING'
@@ -354,6 +354,10 @@ resource backendApp 'Microsoft.App/containerApps@2024-03-01' = {
             }
             {
               name: 'JWT_SECRET_KEY'
+              secretRef: 'jwt-secret-key'
+            }
+            {
+              name: 'Jwt__Key'
               secretRef: 'jwt-secret-key'
             }
             {
