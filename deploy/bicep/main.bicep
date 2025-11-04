@@ -27,10 +27,6 @@ param frontendImage string
 @description('Backend container image')
 param backendImage string
 
-@description('JWT secret key')
-@secure()
-param jwtSecretKey string
-
 @description('Optional revision suffix to force new revision creation')
 param revisionSuffix string = ''
 
@@ -46,6 +42,8 @@ var storageAccountName = 'st${uniqueString(resourceGroup().id)}${environment}'
 var blobContainerName = 'recipe-photos'
 var frontendFqdn = '${frontendAppName}.${containerAppEnv.properties.defaultDomain}'
 var backendFqdn = '${backendAppName}.${containerAppEnv.properties.defaultDomain}'
+var jwtSecretSeed = storageAccount.listKeys().keys[0].value
+var jwtSecretKey = sha256('${jwtSecretSeed}:${environment}:${resourceGroup().id}')
 
 // Log Analytics Workspace - Free tier with 5GB/month (in Germany)
 resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {

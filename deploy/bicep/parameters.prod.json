@@ -19,9 +19,6 @@
     },
     "backendImage": {
       "value": "ghcr.io/Lenny32/whatissinmyfridge/backend:latest"
-    },
-    "jwtSecretKey": {
-      "value": ""
     }
   }
 }
