@@ -288,10 +288,6 @@ resource backendApp 'Microsoft.App/containerApps@2024-03-01' = {
           value: cosmosAccount.listConnectionStrings().connectionStrings[0].connectionString
         }
         {
-          name: 'cosmos-connection-string-with-db'
-          value: '${cosmosAccount.listConnectionStrings().connectionStrings[0].connectionString};Database=${cosmosDatabaseName}'
-        }
-        {
           name: 'blob-storage-connection-string'
           value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};AccountKey=${storageAccount.listKeys().keys[0].value};EndpointSuffix=core.windows.net'
         }
@@ -322,7 +318,7 @@ resource backendApp 'Microsoft.App/containerApps@2024-03-01' = {
             }
             {
               name: 'ConnectionStrings__CosmosDb'
-              secretRef: 'cosmos-connection-string-with-db'
+              secretRef: 'cosmos-connection-string'
             }
             {
               name: 'CosmosDb__ConnectionString'

@@ -3,7 +3,24 @@ import { getToken } from "./auth";
 import createClient from "openapi-fetch";
 import type { paths } from "./api-types";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "";
+// Placeholder replaced at runtime in container when VITE_API_BASE is provided
+const API_BASE_PLACEHOLDER = "__VITE_API_BASE__";
+
+function resolveApiBase(): string {
+  const fromVite = import.meta.env.VITE_API_BASE;
+
+  if (fromVite && fromVite !== API_BASE_PLACEHOLDER) {
+    return fromVite;
+  }
+
+  if (API_BASE_PLACEHOLDER !== "__VITE_API_BASE__") {
+    return API_BASE_PLACEHOLDER;
+  }
+
+  return "";
+}
+
+const API_BASE = resolveApiBase();
 
 /**
  * Debug error information attached to errors when the backend is running in development mode.
