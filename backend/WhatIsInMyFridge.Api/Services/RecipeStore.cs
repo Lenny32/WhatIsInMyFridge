@@ -41,6 +41,7 @@ public sealed class RecipeStore
         var now = DateTimeOffset.UtcNow;
         var recipe = new Recipe
         {
+            Id = Guid.NewGuid().ToString("N"),
             HouseholdId = householdId,
             Name = request.Name.Trim(),
             Description = request.Description?.Trim(),
@@ -114,7 +115,9 @@ public sealed class RecipeStore
     public async Task<bool> DeleteAsync(string id)
     {
         _logger.LogInformation("Deleting recipe {RecipeId}", id);
-        var recipe = await _context.Recipes.FindAsync(id);
+        var recipe = await _context.Recipes
+            .Where(r => r.Id == id)
+            .FirstOrDefaultAsync();
         if (recipe == null)
         {
             _logger.LogWarning("Delete failed: Recipe {RecipeId} not found", id);
@@ -144,7 +147,9 @@ public sealed class RecipeStore
     public async Task UpdatePhotosAsync(string id, List<string> photos)
     {
         _logger.LogInformation("Updating photos for recipe {RecipeId}", id);
-        var recipe = await _context.Recipes.FindAsync(id);
+        var recipe = await _context.Recipes
+            .Where(r => r.Id == id)
+            .FirstOrDefaultAsync();
         if (recipe == null)
         {
             _logger.LogWarning("Update photos failed: Recipe {RecipeId} not found", id);

@@ -32,7 +32,10 @@ public sealed class GroceryListStore
 
     public async Task<GroceryItem?> GetByIdAsync(string id)
     {
-        return await _context.GroceryItems.FindAsync(id);
+        // For Cosmos DB, use Where instead of FindAsync when partition key != Id
+        return await _context.GroceryItems
+            .Where(item => item.Id == id)
+            .FirstOrDefaultAsync();
     }
 
     public async Task<GroceryItem> CreateAsync(string householdId, CreateGroceryItemRequest request)
@@ -61,7 +64,9 @@ public sealed class GroceryListStore
     public async Task<GroceryItem?> UpdateAsync(string id, UpdateGroceryItemRequest request)
     {
         _logger.LogInformation("Updating grocery item {ItemId}", id);
-        var existing = await _context.GroceryItems.FindAsync(id);
+        var existing = await _context.GroceryItems
+            .Where(item => item.Id == id)
+            .FirstOrDefaultAsync();
         if (existing == null)
         {
             _logger.LogWarning("Update failed: Grocery item {ItemId} not found", id);
@@ -83,7 +88,9 @@ public sealed class GroceryListStore
     public async Task<bool> DeleteAsync(string id)
     {
         _logger.LogInformation("Deleting grocery item {ItemId}", id);
-        var item = await _context.GroceryItems.FindAsync(id);
+        var item = await _context.GroceryItems
+            .Where(item => item.Id == id)
+            .FirstOrDefaultAsync();
         if (item == null)
         {
             _logger.LogWarning("Delete failed: Grocery item {ItemId} not found", id);

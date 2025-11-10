@@ -49,9 +49,13 @@ public sealed class FoodInventoryStore
         return items;
     }
 
-    public async Task<FoodItem?> GetByIdAsync(string id)
+    public async Task<FoodItem?> GetByIdAsync(string id, string? householdId = null)
     {
-        return await _context.FoodItems.FindAsync(id);
+        // For Cosmos DB, we need to use Where instead of FindAsync when partition key != Id
+        // FindAsync would require both id and partition key
+        return await _context.FoodItems
+            .Where(item => item.Id == id)
+            .FirstOrDefaultAsync();
     }
 
     public async Task<FoodItem> CreateAsync(string householdId, CreateFoodItemRequest request)
@@ -60,6 +64,7 @@ public sealed class FoodInventoryStore
         var now = DateTimeOffset.UtcNow;
         var item = new FoodItem
         {
+            Id = Guid.NewGuid().ToString("N"),
             HouseholdId = householdId,
             Name = request.Name.Trim(),
             Location = request.Location,
@@ -82,7 +87,9 @@ public sealed class FoodInventoryStore
     public async Task<FoodItem?> UpdateAsync(string id, UpdateFoodItemRequest request)
     {
         _logger.LogInformation("Updating food item {ItemId}", id);
-        var existing = await _context.FoodItems.FindAsync(id);
+        var existing = await _context.FoodItems
+            .Where(item => item.Id == id)
+            .FirstOrDefaultAsync();
         if (existing == null)
         {
             _logger.LogWarning("Update failed: Food item {ItemId} not found", id);
@@ -107,7 +114,9 @@ public sealed class FoodInventoryStore
     public async Task<bool> DeleteAsync(string id)
     {
         _logger.LogInformation("Deleting food item {ItemId}", id);
-        var item = await _context.FoodItems.FindAsync(id);
+        var item = await _context.FoodItems
+            .Where(item => item.Id == id)
+            .FirstOrDefaultAsync();
         if (item == null)
         {
             _logger.LogWarning("Delete failed: Food item {ItemId} not found", id);
