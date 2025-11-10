@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Hosting;
 using Microsoft.EntityFrameworkCore;
 using WhatIsInMyFridge.Api.Services;
+using WhatIsInMyFridge.Api.Models;
 
 namespace WhatIsInMyFridge.Api.Endpoints;
 
@@ -25,11 +26,11 @@ internal static class DevelopmentEndpoints
         var group = endpoints.MapGroup("/api/dev");
         group.RequireAuthorization();
 
-        // Database testing endpoint - requires admin access
+        // Database CRUD testing endpoint - requires admin access
         group.MapGet("/test-database", async Task<IResult> (HttpContext httpContext, AppDbContext dbContext, UserStore userStore, ILogger<Program> logger) =>
         {
             var userId = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            logger.LogInformation("Database test requested by user: {UserId}", userId);
+            logger.LogInformation("Database CRUD test requested by user: {UserId}", userId);
             
             if (string.IsNullOrEmpty(userId))
             {
@@ -44,147 +45,513 @@ internal static class DevelopmentEndpoints
                 return Results.Forbid();
             }
 
-            logger.LogInformation("Admin {UserId} starting database connectivity test", userId);
+            logger.LogInformation("Admin {UserId} starting full CRUD database test", userId);
 
             var testResults = new List<object>();
+            var testHouseholdId = currentUser.CurrentHouseholdId ?? string.Empty;
 
+            if (string.IsNullOrEmpty(testHouseholdId))
+            {
+                logger.LogWarning("Admin user {UserId} has no household assigned, creating test household", userId);
+                
+                try
+                {
+                    var testHousehold = new Household
+                    {
+                        Id = Guid.NewGuid().ToString("N"),
+                        Name = "Test Household",
+                        OwnerId = userId,
+                        MemberIds = new List<string> { userId },
+                        CreatedAt = DateTimeOffset.UtcNow,
+                        UpdatedAt = DateTimeOffset.UtcNow
+                    };
+                    
+                    dbContext.Households.Add(testHousehold);
+                    await dbContext.SaveChangesAsync();
+                    testHouseholdId = testHousehold.Id;
+                    
+                    logger.LogInformation("Created test household {HouseholdId}", testHouseholdId);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Failed to create test household");
+                    return Results.Problem("Failed to create test household for CRUD operations");
+                }
+            }
+
+            // Test FoodItems CRUD
             try
             {
-                // Test Users table
-                logger.LogDebug("Testing Users table");
-                var firstUser = await dbContext.Users.Take(1).ToArrayAsync();
+                logger.LogDebug("Testing FoodItems CRUD operations");
+                var operations = new List<string>();
+                string? testItemId = null;
+
+                try
+                {
+                    // CREATE
+                    var foodItem = new FoodItem
+                    {
+                        Id = Guid.NewGuid().ToString("N"),
+                        HouseholdId = testHouseholdId,
+                        Name = "Test Food Item",
+                        Location = StorageLocation.Fridge,
+                        Quantity = 5,
+                        Unit = MeasurementUnit.Pieces,
+                        RestockThreshold = 2,
+                        Category = FoodCategory.Vegetables,
+                        Notes = "Test item for CRUD operations",
+                        CreatedAt = DateTimeOffset.UtcNow,
+                        UpdatedAt = DateTimeOffset.UtcNow
+                    };
+                    dbContext.FoodItems.Add(foodItem);
+                    await dbContext.SaveChangesAsync();
+                    testItemId = foodItem.Id;
+                    operations.Add("Create: Success");
+
+                    // READ
+                    var readItem = await dbContext.FoodItems
+                        .Where(item => item.Id == testItemId)
+                        .FirstOrDefaultAsync();
+                    if (readItem != null && readItem.Name == "Test Food Item")
+                    {
+                        operations.Add("Read: Success");
+                    }
+                    else
+                    {
+                        operations.Add("Read: Failed - Item not found or data mismatch");
+                    }
+
+                    // UPDATE
+                    if (readItem != null)
+                    {
+                        readItem.Name = "Updated Test Food Item";
+                        readItem.Quantity = 10;
+                        readItem.UpdatedAt = DateTimeOffset.UtcNow;
+                        await dbContext.SaveChangesAsync();
+                        
+                        var verifyUpdate = await dbContext.FoodItems
+                            .Where(item => item.Id == testItemId)
+                            .FirstOrDefaultAsync();
+                        if (verifyUpdate != null && verifyUpdate.Name == "Updated Test Food Item" && verifyUpdate.Quantity == 10)
+                        {
+                            operations.Add("Update: Success");
+                        }
+                        else
+                        {
+                            operations.Add("Update: Failed - Changes not persisted");
+                        }
+                    }
+
+                    // DELETE
+                    if (testItemId != null)
+                    {
+                        var itemToDelete = await dbContext.FoodItems
+                            .Where(item => item.Id == testItemId)
+                            .FirstOrDefaultAsync();
+                        if (itemToDelete != null)
+                        {
+                            dbContext.FoodItems.Remove(itemToDelete);
+                            await dbContext.SaveChangesAsync();
+                            
+                            var verifyDelete = await dbContext.FoodItems
+                                .Where(item => item.Id == testItemId)
+                                .FirstOrDefaultAsync();
+                            if (verifyDelete == null)
+                            {
+                                operations.Add("Delete: Success");
+                            }
+                            else
+                            {
+                                operations.Add("Delete: Failed - Item still exists");
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    operations.Add($"Operation Failed: {ex.Message}");
+                    logger.LogError(ex, "Error during FoodItems CRUD operation");
+                }
+
                 testResults.Add(new
                 {
-                    Table = "Users",
-                    Status = "Success",
-                    Count = firstUser.Length,
-                    FirstItem = firstUser.Length > 0 ? new { firstUser[0].Id, firstUser[0].Email, firstUser[0].Name, firstUser[0].IsAdmin } : null
+                    Entity = "FoodItems",
+                    Status = operations.All(o => o.Contains("Success")) ? "Success" : "Partial",
+                    Operations = operations
                 });
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Error testing Users table");
+                logger.LogError(ex, "Error testing FoodItems CRUD");
                 testResults.Add(new
                 {
-                    Table = "Users",
+                    Entity = "FoodItems",
                     Status = "Error",
                     Error = ex.Message
                 });
             }
 
+            // Test GroceryItems CRUD
             try
             {
-                // Test Households table
-                logger.LogDebug("Testing Households table");
-                var firstHousehold = await dbContext.Households.Take(1).ToArrayAsync();
+                logger.LogDebug("Testing GroceryItems CRUD operations");
+                var operations = new List<string>();
+                string? testItemId = null;
+
+                try
+                {
+                    // CREATE
+                    var groceryItem = new GroceryItem
+                    {
+                        Id = Guid.NewGuid().ToString("N"),
+                        HouseholdId = testHouseholdId,
+                        Name = "Test Grocery Item",
+                        Quantity = 3,
+                        Category = FoodCategory.Dairy,
+                        Notes = "Test grocery item",
+                        IsPurchased = false,
+                        CreatedAt = DateTimeOffset.UtcNow,
+                        UpdatedAt = DateTimeOffset.UtcNow
+                    };
+                    dbContext.GroceryItems.Add(groceryItem);
+                    await dbContext.SaveChangesAsync();
+                    testItemId = groceryItem.Id;
+                    operations.Add("Create: Success");
+
+                    // READ
+                    var readItem = await dbContext.GroceryItems
+                        .Where(item => item.Id == testItemId)
+                        .FirstOrDefaultAsync();
+                    if (readItem != null && readItem.Name == "Test Grocery Item")
+                    {
+                        operations.Add("Read: Success");
+                    }
+                    else
+                    {
+                        operations.Add("Read: Failed - Item not found or data mismatch");
+                    }
+
+                    // UPDATE
+                    if (readItem != null)
+                    {
+                        readItem.Name = "Updated Grocery Item";
+                        readItem.IsPurchased = true;
+                        readItem.Quantity = 5;
+                        readItem.UpdatedAt = DateTimeOffset.UtcNow;
+                        await dbContext.SaveChangesAsync();
+                        
+                        var verifyUpdate = await dbContext.GroceryItems
+                            .Where(item => item.Id == testItemId)
+                            .FirstOrDefaultAsync();
+                        if (verifyUpdate != null && verifyUpdate.Name == "Updated Grocery Item" && verifyUpdate.IsPurchased)
+                        {
+                            operations.Add("Update: Success");
+                        }
+                        else
+                        {
+                            operations.Add("Update: Failed - Changes not persisted");
+                        }
+                    }
+
+                    // DELETE
+                    if (testItemId != null)
+                    {
+                        var itemToDelete = await dbContext.GroceryItems
+                            .Where(item => item.Id == testItemId)
+                            .FirstOrDefaultAsync();
+                        if (itemToDelete != null)
+                        {
+                            dbContext.GroceryItems.Remove(itemToDelete);
+                            await dbContext.SaveChangesAsync();
+                            
+                            var verifyDelete = await dbContext.GroceryItems
+                                .Where(item => item.Id == testItemId)
+                                .FirstOrDefaultAsync();
+                            if (verifyDelete == null)
+                            {
+                                operations.Add("Delete: Success");
+                            }
+                            else
+                            {
+                                operations.Add("Delete: Failed - Item still exists");
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    operations.Add($"Operation Failed: {ex.Message}");
+                    logger.LogError(ex, "Error during GroceryItems CRUD operation");
+                }
+
                 testResults.Add(new
                 {
-                    Table = "Households",
-                    Status = "Success",
-                    Count = firstHousehold.Length,
-                    FirstItem = firstHousehold.Length > 0 ? new { firstHousehold[0].Id, firstHousehold[0].Name, firstHousehold[0].OwnerId } : null
+                    Entity = "GroceryItems",
+                    Status = operations.All(o => o.Contains("Success")) ? "Success" : "Partial",
+                    Operations = operations
                 });
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Error testing Households table");
+                logger.LogError(ex, "Error testing GroceryItems CRUD");
                 testResults.Add(new
                 {
-                    Table = "Households",
+                    Entity = "GroceryItems",
                     Status = "Error",
                     Error = ex.Message
                 });
             }
 
+            // Test Recipes CRUD
             try
             {
-                // Test FoodItems table
-                logger.LogDebug("Testing FoodItems table");
-                var firstFoodItem = await dbContext.FoodItems.Take(1).ToArrayAsync();
+                logger.LogDebug("Testing Recipes CRUD operations");
+                var operations = new List<string>();
+                string? testItemId = null;
+
+                try
+                {
+                    // CREATE
+                    var recipe = new Recipe
+                    {
+                        Id = Guid.NewGuid().ToString("N"),
+                        HouseholdId = testHouseholdId,
+                        Name = "Test Recipe",
+                        Description = "A test recipe for CRUD operations",
+                        Servings = 4,
+                        PrepTimeMinutes = 15,
+                        CookTimeMinutes = 30,
+                        Ingredients = new List<RecipeIngredient>
+                        {
+                            new RecipeIngredient
+                            {
+                                Name = "Test Ingredient",
+                                Quantity = 2,
+                                Unit = MeasurementUnit.Cups
+                            }
+                        },
+                        Instructions = new List<string> { "Step 1: Test", "Step 2: Verify" },
+                        Notes = "Test recipe notes",
+                        Photos = new List<string>(),
+                        CreatedAt = DateTimeOffset.UtcNow,
+                        UpdatedAt = DateTimeOffset.UtcNow
+                    };
+                    dbContext.Recipes.Add(recipe);
+                    await dbContext.SaveChangesAsync();
+                    testItemId = recipe.Id;
+                    operations.Add("Create: Success");
+
+                    // READ
+                    var readItem = await dbContext.Recipes
+                        .Where(item => item.Id == testItemId)
+                        .FirstOrDefaultAsync();
+                    if (readItem != null && readItem.Name == "Test Recipe")
+                    {
+                        operations.Add("Read: Success");
+                    }
+                    else
+                    {
+                        operations.Add("Read: Failed - Item not found or data mismatch");
+                    }
+
+                    // UPDATE
+                    if (readItem != null)
+                    {
+                        readItem.Name = "Updated Test Recipe";
+                        readItem.Servings = 6;
+                        readItem.Description = "Updated description";
+                        readItem.UpdatedAt = DateTimeOffset.UtcNow;
+                        await dbContext.SaveChangesAsync();
+                        
+                        var verifyUpdate = await dbContext.Recipes
+                            .Where(item => item.Id == testItemId)
+                            .FirstOrDefaultAsync();
+                        if (verifyUpdate != null && verifyUpdate.Name == "Updated Test Recipe" && verifyUpdate.Servings == 6)
+                        {
+                            operations.Add("Update: Success");
+                        }
+                        else
+                        {
+                            operations.Add("Update: Failed - Changes not persisted");
+                        }
+                    }
+
+                    // DELETE
+                    if (testItemId != null)
+                    {
+                        var itemToDelete = await dbContext.Recipes
+                            .Where(item => item.Id == testItemId)
+                            .FirstOrDefaultAsync();
+                        if (itemToDelete != null)
+                        {
+                            dbContext.Recipes.Remove(itemToDelete);
+                            await dbContext.SaveChangesAsync();
+                            
+                            var verifyDelete = await dbContext.Recipes
+                                .Where(item => item.Id == testItemId)
+                                .FirstOrDefaultAsync();
+                            if (verifyDelete == null)
+                            {
+                                operations.Add("Delete: Success");
+                            }
+                            else
+                            {
+                                operations.Add("Delete: Failed - Item still exists");
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    operations.Add($"Operation Failed: {ex.Message}");
+                    logger.LogError(ex, "Error during Recipes CRUD operation");
+                }
+
                 testResults.Add(new
                 {
-                    Table = "FoodItems",
-                    Status = "Success",
-                    Count = firstFoodItem.Length,
-                    FirstItem = firstFoodItem.Length > 0 ? new { firstFoodItem[0].Id, firstFoodItem[0].Name, firstFoodItem[0].HouseholdId, firstFoodItem[0].Location, firstFoodItem[0].Quantity, firstFoodItem[0].RestockThreshold } : null
+                    Entity = "Recipes",
+                    Status = operations.All(o => o.Contains("Success")) ? "Success" : "Partial",
+                    Operations = operations
                 });
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Error testing FoodItems table");
+                logger.LogError(ex, "Error testing Recipes CRUD");
                 testResults.Add(new
                 {
-                    Table = "FoodItems",
+                    Entity = "Recipes",
                     Status = "Error",
                     Error = ex.Message
                 });
             }
 
+            // Test Households CRUD
             try
             {
-                // Test Recipes table
-                logger.LogDebug("Testing Recipes table");
-                var firstRecipe = await dbContext.Recipes.Take(1).ToArrayAsync();
-                testResults.Add(new
-                {
-                    Table = "Recipes",
-                    Status = "Success",
-                    Count = firstRecipe.Length,
-                    FirstItem = firstRecipe.Length > 0 ? new { firstRecipe[0].Id, firstRecipe[0].Name, firstRecipe[0].HouseholdId, IngredientsCount = firstRecipe[0].Ingredients.Count } : null
-                });
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Error testing Recipes table");
-                testResults.Add(new
-                {
-                    Table = "Recipes",
-                    Status = "Error",
-                    Error = ex.Message
-                });
-            }
+                logger.LogDebug("Testing Households CRUD operations");
+                var operations = new List<string>();
+                string? testItemId = null;
 
-            try
-            {
-                // Test GroceryItems table
-                logger.LogDebug("Testing GroceryItems table");
-                var firstGroceryItem = await dbContext.GroceryItems.Take(1).ToArrayAsync();
+                try
+                {
+                    // CREATE
+                    var household = new Household
+                    {
+                        Id = Guid.NewGuid().ToString("N"),
+                        Name = "Test CRUD Household",
+                        OwnerId = userId,
+                        MemberIds = new List<string> { userId },
+                        CreatedAt = DateTimeOffset.UtcNow,
+                        UpdatedAt = DateTimeOffset.UtcNow
+                    };
+                    dbContext.Households.Add(household);
+                    await dbContext.SaveChangesAsync();
+                    testItemId = household.Id;
+                    operations.Add("Create: Success");
+
+                    // READ
+                    var readItem = await dbContext.Households
+                        .Where(item => item.Id == testItemId)
+                        .FirstOrDefaultAsync();
+                    if (readItem != null && readItem.Name == "Test CRUD Household")
+                    {
+                        operations.Add("Read: Success");
+                    }
+                    else
+                    {
+                        operations.Add("Read: Failed - Item not found or data mismatch");
+                    }
+
+                    // UPDATE
+                    if (readItem != null)
+                    {
+                        readItem.Name = "Updated CRUD Household";
+                        readItem.UpdatedAt = DateTimeOffset.UtcNow;
+                        await dbContext.SaveChangesAsync();
+                        
+                        var verifyUpdate = await dbContext.Households
+                            .Where(item => item.Id == testItemId)
+                            .FirstOrDefaultAsync();
+                        if (verifyUpdate != null && verifyUpdate.Name == "Updated CRUD Household")
+                        {
+                            operations.Add("Update: Success");
+                        }
+                        else
+                        {
+                            operations.Add("Update: Failed - Changes not persisted");
+                        }
+                    }
+
+                    // DELETE
+                    if (testItemId != null)
+                    {
+                        var itemToDelete = await dbContext.Households
+                            .Where(item => item.Id == testItemId)
+                            .FirstOrDefaultAsync();
+                        if (itemToDelete != null)
+                        {
+                            dbContext.Households.Remove(itemToDelete);
+                            await dbContext.SaveChangesAsync();
+                            
+                            var verifyDelete = await dbContext.Households
+                                .Where(item => item.Id == testItemId)
+                                .FirstOrDefaultAsync();
+                            if (verifyDelete == null)
+                            {
+                                operations.Add("Delete: Success");
+                            }
+                            else
+                            {
+                                operations.Add("Delete: Failed - Item still exists");
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    operations.Add($"Operation Failed: {ex.Message}");
+                    logger.LogError(ex, "Error during Households CRUD operation");
+                }
+
                 testResults.Add(new
                 {
-                    Table = "GroceryItems",
-                    Status = "Success",
-                    Count = firstGroceryItem.Length,
-                    FirstItem = firstGroceryItem.Length > 0 ? new { firstGroceryItem[0].Id, firstGroceryItem[0].Name, firstGroceryItem[0].HouseholdId, firstGroceryItem[0].IsPurchased } : null
+                    Entity = "Households",
+                    Status = operations.All(o => o.Contains("Success")) ? "Success" : "Partial",
+                    Operations = operations
                 });
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Error testing GroceryItems table");
+                logger.LogError(ex, "Error testing Households CRUD");
                 testResults.Add(new
                 {
-                    Table = "GroceryItems",
+                    Entity = "Households",
                     Status = "Error",
                     Error = ex.Message
                 });
             }
 
             var successCount = testResults.Count(r => ((dynamic)r).Status == "Success");
+            var partialCount = testResults.Count(r => ((dynamic)r).Status == "Partial");
             var errorCount = testResults.Count(r => ((dynamic)r).Status == "Error");
 
-            logger.LogInformation("Database test completed for admin {UserId}. Success: {SuccessCount}, Errors: {ErrorCount}", userId, successCount, errorCount);
+            logger.LogInformation("Database CRUD test completed for admin {UserId}. Success: {SuccessCount}, Partial: {PartialCount}, Errors: {ErrorCount}", 
+                userId, successCount, partialCount, errorCount);
 
             return Results.Ok(new
             {
-                Message = "Database connectivity test completed",
+                Message = "Database CRUD test completed",
                 Summary = new
                 {
-                    TablesSuccessful = successCount,
-                    TablesWithErrors = errorCount,
-                    TotalTables = testResults.Count
+                    EntitiesSuccessful = successCount,
+                    EntitiesPartial = partialCount,
+                    EntitiesWithErrors = errorCount,
+                    TotalEntities = testResults.Count
                 },
                 Results = testResults,
                 TestedBy = userId,
                 TestedAt = DateTimeOffset.UtcNow,
+                TestHouseholdId = testHouseholdId,
                 Environment = "Development",
                 BuildConfiguration = "Debug"
             });
