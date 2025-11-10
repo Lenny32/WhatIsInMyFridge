@@ -24,6 +24,8 @@ var api = builder.AddProject<Projects.WhatIsInMyFridge_Api>("api")
     .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
     .WithEnvironment("ConnectionStrings__CosmosDb", cosmosDb)
     .WithEnvironment("ConnectionStrings__BlobStorage", blobs)
+    .WithEnvironment("CosmosDb__DatabaseName", "WhatIsInMyFridge")
+    .WithEnvironment("JWT_SECRET_KEY", "nA1fNQirJ/k/CB8CaWcSjOzcYeRTyC98J1Ng+VY+ia8=")
     .WithEnvironment("ALLOWED_ORIGINS", deno.GetEndpoint("http"))
     .WithReference(cosmosDb)
     .WithReference(blobs);

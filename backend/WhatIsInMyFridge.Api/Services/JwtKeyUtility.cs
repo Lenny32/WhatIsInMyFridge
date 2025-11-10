@@ -10,27 +10,35 @@ internal static class JwtKeyUtility
     {
         if (string.IsNullOrWhiteSpace(rawKey))
         {
-            throw new InvalidOperationException("JWT secret key is required.");
+            throw new InvalidOperationException("JWT secret key is required and cannot be null or empty.");
         }
 
         byte[] keyBytes;
 
-        if (LooksLikeBase64(rawKey) && TryDecodeBase64(rawKey, out var decoded))
+        try
         {
-            keyBytes = decoded;
-        }
-        else
-        {
-            keyBytes = Encoding.UTF8.GetBytes(rawKey);
-        }
+            if (LooksLikeBase64(rawKey) && TryDecodeBase64(rawKey, out var decoded))
+            {
+                keyBytes = decoded;
+            }
+            else
+            {
+                keyBytes = Encoding.UTF8.GetBytes(rawKey);
+            }
 
-        if (keyBytes.Length < 32)
-        {
-            throw new InvalidOperationException(
-                "JWT secret key must be at least 32 bytes. Generate one using `openssl rand -base64 48` or provide a longer plaintext value.");
-        }
+            if (keyBytes.Length < 32)
+            {
+                throw new InvalidOperationException(
+                    $"JWT secret key must be at least 32 bytes (current length: {keyBytes.Length} bytes). " +
+                    "Generate one using `openssl rand -base64 48` or provide a longer plaintext value.");
+            }
 
-        return keyBytes;
+            return keyBytes;
+        }
+        catch (Exception ex) when (!(ex is InvalidOperationException))
+        {
+            throw new InvalidOperationException($"Failed to process JWT secret key: {ex.Message}", ex);
+        }
     }
 
     private static bool LooksLikeBase64(string value)

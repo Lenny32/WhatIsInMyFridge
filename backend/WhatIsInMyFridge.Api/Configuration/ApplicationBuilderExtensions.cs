@@ -12,9 +12,9 @@ internal static class ApplicationBuilderExtensions
 {
     public static IApplicationBuilder UseDevelopmentExceptionSerialization(this IApplicationBuilder app)
     {
-    var loggerFactory = app.ApplicationServices.GetService<ILoggerFactory>();
-    var logger = loggerFactory?.CreateLogger("ApplicationBuilderExtensions");
-    logger?.LogDebug("Registering exception handler middleware (development serialization)");
+        var loggerFactory = app.ApplicationServices.GetService<ILoggerFactory>();
+        var logger = loggerFactory?.CreateLogger("ApplicationBuilderExtensions");
+        logger?.LogDebug("Registering exception handler middleware (development serialization)");
 
         app.UseExceptionHandler(_ => { }); // Use registered IExceptionHandler implementations
 
@@ -24,9 +24,9 @@ internal static class ApplicationBuilderExtensions
 
     public static async Task EnsureCosmosDatabaseAsync(this WebApplication app)
     {
-    using var scope = app.Services.CreateScope();
-    var loggerFactory = scope.ServiceProvider.GetService<ILoggerFactory>();
-    var logger = loggerFactory?.CreateLogger("ApplicationBuilderExtensions");
+        using var scope = app.Services.CreateScope();
+        var loggerFactory = scope.ServiceProvider.GetService<ILoggerFactory>();
+        var logger = loggerFactory?.CreateLogger("ApplicationBuilderExtensions");
 
         try
         {
@@ -52,8 +52,8 @@ internal static class ApplicationBuilderExtensions
 
     private static bool ShouldInitializeCosmosDatabase(WebApplication app, IServiceProvider services)
     {
-    var loggerFactory = services.GetService<ILoggerFactory>();
-    var logger = loggerFactory?.CreateLogger("ApplicationBuilderExtensions");
+        var loggerFactory = services.GetService<ILoggerFactory>();
+        var logger = loggerFactory?.CreateLogger("ApplicationBuilderExtensions");
 
         if (!app.Environment.IsDevelopment())
         {
@@ -73,7 +73,8 @@ internal static class ApplicationBuilderExtensions
         }
 
         var isLocal = IsLocalCosmosEndpoint(settings.ConnectionString);
-        logger?.LogDebug("Detected local Cosmos endpoint: {IsLocal}", isLocal);
+        logger?.LogDebug("Detected local Cosmos endpoint: {IsLocal} for connection: {ConnectionString}",
+            isLocal, MaskConnectionString(settings.ConnectionString));
         return isLocal;
     }
 
@@ -86,6 +87,29 @@ internal static class ApplicationBuilderExtensions
 
         return connectionString.Contains("localhost", StringComparison.OrdinalIgnoreCase)
                || connectionString.Contains("127.0.0.1", StringComparison.OrdinalIgnoreCase)
-               || connectionString.Contains("AccountEndpoint=https://host.docker.internal", StringComparison.OrdinalIgnoreCase);
+               || connectionString.Contains("AccountEndpoint=https://host.docker.internal", StringComparison.OrdinalIgnoreCase)
+               || connectionString.Contains(":8081", StringComparison.OrdinalIgnoreCase); // Standard Cosmos DB emulator port
+    }
+
+    private static string MaskConnectionString(string connectionString)
+    {
+        if (string.IsNullOrEmpty(connectionString))
+            return "[empty]";
+
+        // Mask the account key for security
+        if (connectionString.Contains("AccountKey="))
+        {
+            var parts = connectionString.Split(';');
+            for (int i = 0; i < parts.Length; i++)
+            {
+                if (parts[i].StartsWith("AccountKey="))
+                {
+                    parts[i] = "AccountKey=***MASKED***";
+                }
+            }
+            return string.Join(';', parts);
+        }
+
+        return connectionString.Length > 50 ? connectionString.Substring(0, 47) + "..." : connectionString;
     }
 }

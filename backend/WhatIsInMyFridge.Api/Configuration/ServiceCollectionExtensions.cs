@@ -30,9 +30,14 @@ internal static class ServiceCollectionExtensions
 
     public static IServiceCollection AddJwtAuthentication(this IServiceCollection services, IConfiguration configuration)
     {
-        var jwtKey = configuration["Jwt:Key"]
-            ?? Environment.GetEnvironmentVariable("JWT_SECRET_KEY")
-            ?? throw new InvalidOperationException("JWT secret key is required.");
+        // Handle both null and empty strings for JWT key
+        var configKey = configuration["Jwt:Key"];
+        var envKey = Environment.GetEnvironmentVariable("JWT_SECRET_KEY");
+        
+        var jwtKey = !string.IsNullOrWhiteSpace(configKey) ? configKey
+            : !string.IsNullOrWhiteSpace(envKey) ? envKey
+            : throw new InvalidOperationException("JWT secret key is required. Provide 'Jwt:Key' in configuration or 'JWT_SECRET_KEY' environment variable.");
+            
         var signingKeyBytes = JwtKeyUtility.GetSigningKeyBytes(jwtKey);
         var signingKey = new SymmetricSecurityKey(signingKeyBytes);
         var jwtIssuer = configuration["Jwt:Issuer"]

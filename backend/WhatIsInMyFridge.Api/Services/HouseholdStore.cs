@@ -22,9 +22,26 @@ public sealed class HouseholdStore
 
     public async Task<IReadOnlyCollection<Household>> GetByUserIdAsync(string userId)
     {
-        return await _context.Households
-            .Where(h => h.MemberIds.Contains(userId))
-            .ToArrayAsync();
+        // Alternative approach: Use User.HouseholdIds to avoid ARRAY_CONTAINS query on Household.MemberIds
+        // This bypasses the Cosmos DB emulator indexing issue with array operations
+        var user = await _context.Users.FindAsync(userId);
+        if (user?.HouseholdIds == null || user.HouseholdIds.Count == 0)
+        {
+            return Array.Empty<Household>();
+        }
+
+        // Query households by their IDs using efficient primary key lookups
+        var households = new List<Household>();
+        foreach (var householdId in user.HouseholdIds)
+        {
+            var household = await _context.Households.FindAsync(householdId);
+            if (household != null)
+            {
+                households.Add(household);
+            }
+        }
+
+        return households.AsReadOnly();
     }
 
     public async Task<Household> CreateAsync(Household household)

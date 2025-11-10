@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using WhatIsInMyFridge.Api.Models;
 
 namespace WhatIsInMyFridge.Api.Services;
@@ -9,13 +10,13 @@ public sealed class AppDbContext : DbContext
     {
     }
 
-    public DbSet<User> Users => Set<User>();
-    public DbSet<Household> Households => Set<Household>();
-    public DbSet<FoodItem> FoodItems => Set<FoodItem>();
-    public DbSet<Recipe> Recipes => Set<Recipe>();
+    public DbSet<User> Users { get; set; }
+    public DbSet<Household> Households { get; set; }
+    public DbSet<FoodItem> FoodItems { get; set; }
+    public DbSet<Recipe> Recipes { get; set; }
     // RecipeIngredient is owned by Recipe - not a standalone entity
     // public DbSet<RecipeIngredient> RecipeIngredients => Set<RecipeIngredient>();
-    public DbSet<GroceryItem> GroceryItems => Set<GroceryItem>();
+    public DbSet<GroceryItem> GroceryItems { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -84,7 +85,7 @@ public sealed class AppDbContext : DbContext
                 .HasConversion<string>();
         });
         */
-        
+
         modelBuilder.Entity<GroceryItem>(entity =>
         {
             entity.ToContainer("GroceryItems");

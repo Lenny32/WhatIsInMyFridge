@@ -78,6 +78,13 @@ internal static class DataConfiguration
             return value!;
         }
 
+        // Special case for development: use local emulator if no connection string is found
+        if (IsRunningInDevelopment(configuration))
+        {
+            var localEmulatorConnectionString = "AccountEndpoint=https://localhost:8081/;AccountKey=C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==";
+            return localEmulatorConnectionString;
+        }
+
         var configTargets = new[] { $"ConnectionStrings:{name}" }
             .Concat(fallbackConfigurationKeys)
             .Distinct()
@@ -111,8 +118,20 @@ internal static class DataConfiguration
             return envValue!;
         }
 
+        // For database name, provide a default in development
+        if (description.Contains("database name", StringComparison.OrdinalIgnoreCase) && IsRunningInDevelopment(configuration))
+        {
+            return "WhatIsInMyFridge";
+        }
+
         throw new InvalidOperationException(
             $"{description} is required. Provide {string.Join(" or ", keys.Select(k => $"'{k}'"))}{FormatEnvHint(fallbackEnvironmentVariables)}.");
+    }
+
+    private static bool IsRunningInDevelopment(IConfiguration configuration)
+    {
+        var environment = configuration["ASPNETCORE_ENVIRONMENT"] ?? Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+        return string.Equals(environment, "Development", StringComparison.OrdinalIgnoreCase);
     }
 
     private static string FormatEnvHint(IEnumerable<string> environmentVariables)
@@ -127,4 +146,6 @@ internal static class DataConfiguration
 internal sealed record CosmosDbSettings(string ConnectionString, string DatabaseName);
 
 internal sealed record BlobStorageSettings(string ConnectionString);
+
+
 

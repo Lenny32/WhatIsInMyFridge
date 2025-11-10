@@ -33,5 +33,6 @@ app.MapFoodInventoryEndpoints();
 app.MapRecipeEndpoints();
 app.MapGroceryEndpoints();
 app.MapAdminEndpoints();
+app.MapDevelopmentEndpoints(app.Environment);
 
 app.Run();

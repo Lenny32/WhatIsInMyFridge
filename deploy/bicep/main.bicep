@@ -166,6 +166,32 @@ resource householdsContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases
         ]
         kind: 'Hash'
       }
+      indexingPolicy: {
+        indexingMode: 'consistent'
+        automatic: true
+        includedPaths: [
+          {
+            path: '/*'
+            indexes: [
+              {
+                kind: 'Range'
+                dataType: 'String'
+                precision: -1
+              }
+              {
+                kind: 'Range'
+                dataType: 'Number'
+                precision: -1
+              }
+            ]
+          }
+        ]
+        excludedPaths: [
+          {
+            path: '/"_etag"/?'
+          }
+        ]
+      }
     }
   }
 }

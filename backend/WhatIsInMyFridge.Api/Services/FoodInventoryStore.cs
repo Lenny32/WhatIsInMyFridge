@@ -34,10 +34,17 @@ public sealed class FoodInventoryStore
     public async Task<IReadOnlyCollection<FoodItem>> GetToBuyListAsync(string householdId)
     {
         _logger.LogDebug("Retrieving to-buy list for household {HouseholdId}", householdId);
-        var items = await _context.FoodItems
-            .Where(item => item.HouseholdId == householdId 
-                && item.Quantity <= item.RestockThreshold)
+        
+        // Load all items for the household first, then filter in memory
+        // This avoids the Cosmos DB field-to-field decimal comparison issue
+        var allItems = await _context.FoodItems
+            .Where(item => item.HouseholdId == householdId)
             .ToArrayAsync();
+            
+        var items = allItems
+            .Where(item => item.Quantity <= item.RestockThreshold)
+            .ToArray();
+            
         _logger.LogDebug("Retrieved {Count} items to buy for household {HouseholdId}", items.Length, householdId);
         return items;
     }
