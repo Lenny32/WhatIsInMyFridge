@@ -15,6 +15,33 @@ namespace WhatIsInMyFridge.Api.Endpoints;
 internal static class DevelopmentEndpoints
 {
 #if DEBUG
+    private static string GetDetailedExceptionMessage(Exception ex)
+    {
+        var messages = new List<string>();
+        var currentException = ex;
+        var depth = 0;
+        
+        while (currentException != null && depth < 10)
+        {
+            var prefix = depth == 0 ? "" : $"Inner Exception {depth}: ";
+            messages.Add($"{prefix}{currentException.GetType().Name}: {currentException.Message}");
+            
+            if (!string.IsNullOrEmpty(currentException.StackTrace))
+            {
+                var stackLines = currentException.StackTrace.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+                if (stackLines.Length > 0)
+                {
+                    messages.Add($"  at {stackLines[0].Trim()}");
+                }
+            }
+            
+            currentException = currentException.InnerException;
+            depth++;
+        }
+        
+        return string.Join(" | ", messages);
+    }
+
     public static IEndpointRouteBuilder MapDevelopmentEndpoints(this IEndpointRouteBuilder endpoints, IHostEnvironment environment)
     {
         // Only register these endpoints in Development mode and DEBUG builds
@@ -75,7 +102,7 @@ internal static class DevelopmentEndpoints
                 catch (Exception ex)
                 {
                     logger.LogError(ex, "Failed to create test household");
-                    return Results.Problem("Failed to create test household for CRUD operations");
+                    return Results.Problem($"Failed to create test household for CRUD operations. Error: {GetDetailedExceptionMessage(ex)}");
                 }
             }
 
@@ -169,7 +196,7 @@ internal static class DevelopmentEndpoints
                 }
                 catch (Exception ex)
                 {
-                    operations.Add($"Operation Failed: {ex.Message}");
+                    operations.Add($"Operation Failed: {GetDetailedExceptionMessage(ex)}");
                     logger.LogError(ex, "Error during FoodItems CRUD operation");
                 }
 
@@ -187,7 +214,7 @@ internal static class DevelopmentEndpoints
                 {
                     Entity = "FoodItems",
                     Status = "Error",
-                    Error = ex.Message
+                    Error = GetDetailedExceptionMessage(ex)
                 });
             }
 
@@ -280,7 +307,7 @@ internal static class DevelopmentEndpoints
                 }
                 catch (Exception ex)
                 {
-                    operations.Add($"Operation Failed: {ex.Message}");
+                    operations.Add($"Operation Failed: {GetDetailedExceptionMessage(ex)}");
                     logger.LogError(ex, "Error during GroceryItems CRUD operation");
                 }
 
@@ -298,7 +325,7 @@ internal static class DevelopmentEndpoints
                 {
                     Entity = "GroceryItems",
                     Status = "Error",
-                    Error = ex.Message
+                    Error = GetDetailedExceptionMessage(ex)
                 });
             }
 
@@ -403,7 +430,7 @@ internal static class DevelopmentEndpoints
                 }
                 catch (Exception ex)
                 {
-                    operations.Add($"Operation Failed: {ex.Message}");
+                    operations.Add($"Operation Failed: {GetDetailedExceptionMessage(ex)}");
                     logger.LogError(ex, "Error during Recipes CRUD operation");
                 }
 
@@ -421,7 +448,7 @@ internal static class DevelopmentEndpoints
                 {
                     Entity = "Recipes",
                     Status = "Error",
-                    Error = ex.Message
+                    Error = GetDetailedExceptionMessage(ex)
                 });
             }
 
@@ -509,7 +536,7 @@ internal static class DevelopmentEndpoints
                 }
                 catch (Exception ex)
                 {
-                    operations.Add($"Operation Failed: {ex.Message}");
+                    operations.Add($"Operation Failed: {GetDetailedExceptionMessage(ex)}");
                     logger.LogError(ex, "Error during Households CRUD operation");
                 }
 
@@ -527,7 +554,7 @@ internal static class DevelopmentEndpoints
                 {
                     Entity = "Households",
                     Status = "Error",
-                    Error = ex.Message
+                    Error = GetDetailedExceptionMessage(ex)
                 });
             }
 
