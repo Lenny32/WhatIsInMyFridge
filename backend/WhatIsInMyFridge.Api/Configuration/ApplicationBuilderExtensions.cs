@@ -30,23 +30,26 @@ internal static class ApplicationBuilderExtensions
 
         try
         {
-            logger?.LogInformation("Checking whether to initialize Cosmos DB database");
+            logger?.LogInformation("Initializing Cosmos DB database and containers");
 
-            if (!ShouldInitializeCosmosDatabase(app, scope.ServiceProvider))
-            {
-                logger?.LogDebug("Skipping Cosmos DB initialization (not development or not local endpoint)");
-                return;
-            }
+            // Use the new CosmosDbInitializer for proper container creation
+            var cosmosInitializer = scope.ServiceProvider.GetRequiredService<CosmosDbInitializer>();
+            await cosmosInitializer.InitializeAsync();
 
-            var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            logger?.LogInformation("Ensuring Cosmos DB database is created (EnsureCreatedAsync)");
-            await dbContext.Database.EnsureCreatedAsync();
-            logger?.LogInformation("Cosmos DB database ensured/created successfully");
+            logger?.LogInformation("Cosmos DB initialization completed successfully");
         }
         catch (Exception ex)
         {
-            logger?.LogError(ex, "Failed to ensure Cosmos DB database");
-            // Don't rethrow - initialization should not stop the application from starting
+            logger?.LogError(ex, "Failed to initialize Cosmos DB database and containers");
+            
+            // In production, this is critical - rethrow to prevent app from starting with broken database
+            if (!app.Environment.IsDevelopment())
+            {
+                throw;
+            }
+            
+            // In development, log but continue (for local emulator issues)
+            logger?.LogWarning("Continuing startup despite Cosmos DB initialization failure (development mode)");
         }
     }
 

@@ -9,6 +9,9 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.EntityFrameworkCore;
 using WhatIsInMyFridge.Api.Services;
 using WhatIsInMyFridge.Api.Models;
+using System.Text.Json;
+using Microsoft.Azure.Cosmos;
+using WhatIsInMyFridge.Api.Configuration;
 
 namespace WhatIsInMyFridge.Api.Endpoints;
 
@@ -583,6 +586,112 @@ internal static class DevelopmentEndpoints
                 BuildConfiguration = "Debug"
             });
         });
+
+        // Add diagnostics endpoint for both development and staging (not production)
+        if (!environment.IsProduction())
+        {
+            group.MapGet("/cosmos-diagnostics", async (
+                CosmosClient cosmosClient, 
+                CosmosDbSettings settings, 
+                ILogger<Program> logger) =>
+            {
+                try
+                {
+                    logger.LogInformation("Running Cosmos DB diagnostics");
+                    
+                    var diagnostics = new
+                    {
+                        DatabaseName = settings.DatabaseName,
+                        ConnectionStringLength = settings.ConnectionString?.Length ?? 0,
+                        ConnectionStringStart = settings.ConnectionString?.Substring(0, Math.Min(50, settings.ConnectionString.Length)) ?? "null",
+                        Environment = environment.EnvironmentName
+                    };
+                    
+                    // Test database access
+                    try
+                    {
+                        var database = cosmosClient.GetDatabase(settings.DatabaseName);
+                        var response = await database.ReadAsync();
+                        
+                        // Try to list containers (simplified approach)
+                        var containers = new List<string> { "Users", "Households", "FoodItems", "Recipes", "GroceryItems" };
+                        var containerStatus = new Dictionary<string, string>();
+                        
+                        foreach (var containerName in containers)
+                        {
+                            try
+                            {
+                                var container = database.GetContainer(containerName);
+                                var containerResponse = await container.ReadContainerAsync();
+                                containerStatus[containerName] = "Exists";
+                            }
+                            catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+                            {
+                                containerStatus[containerName] = "Missing";
+                            }
+                            catch (Exception ex)
+                            {
+                                containerStatus[containerName] = $"Error: {ex.Message}";
+                            }
+                        }
+                        
+                        return Results.Ok(new
+                        {
+                            Status = "Success",
+                            Configuration = diagnostics,
+                            Database = new
+                            {
+                                StatusCode = response.StatusCode,
+                                Exists = true,
+                                ContainerStatus = containerStatus
+                            }
+                        });
+                    }
+                    catch (CosmosException ex)
+                    {
+                        return Results.Ok(new
+                        {
+                            Status = "DatabaseError",
+                            Configuration = diagnostics,
+                            Error = new
+                            {
+                                StatusCode = ex.StatusCode,
+                                Message = ex.Message,
+                                ResponseBody = ex.ResponseBody
+                            }
+                        });
+                    }
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Cosmos DB diagnostics failed");
+                    return Results.Problem($"Diagnostics failed: {ex.Message}");
+                }
+            });
+        }
+
+        // Only allow full reset in development
+        if (environment.IsDevelopment())
+        {
+            group.MapPost("/reset-data", async (AppDbContext dbContext, ILogger<Program> logger) =>
+            {
+                logger.LogWarning("Development reset endpoint called - this will delete all data!");
+                
+                try
+                {
+                    await dbContext.Database.EnsureDeletedAsync();
+                    await dbContext.Database.EnsureCreatedAsync();
+                    
+                    logger.LogInformation("Database reset completed");
+                    return Results.Ok(new { message = "Database reset successfully" });
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Failed to reset database");
+                    return Results.Problem($"Reset failed: {ex.Message}");
+                }
+            });
+        }
 
         return endpoints;
     }

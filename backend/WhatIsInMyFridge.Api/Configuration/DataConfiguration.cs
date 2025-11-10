@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace WhatIsInMyFridge.Api.Configuration;
 
@@ -10,34 +11,44 @@ internal static class DataConfiguration
     public const string CosmosConnectionName = "CosmosDb";
     public const string BlobConnectionName = "BlobStorage";
 
-    public static CosmosDbSettings GetCosmosSettings(IConfiguration configuration) =>
-        new CosmosDbSettings(
-            RequireConnectionString(
-                configuration,
-                CosmosConnectionName,
-                fallbackConfigurationKeys: new[]
-                {
-                    "CosmosDb:ConnectionString",
-                    "CosmosDb__ConnectionString"
-                },
-                fallbackEnvironmentVariables: new[]
-                {
-                    "COSMOSDB_CONNECTION_STRING",
-                    "COSMOS_CONNECTION_STRING"
-                }),
-            RequireSetting(
-                configuration,
-                keys: new[]
-                {
-                    "CosmosDb:DatabaseName",
-                    "CosmosDb__DatabaseName"
-                },
-                fallbackEnvironmentVariables: new[]
-                {
-                    "COSMOSDB_DATABASE_NAME",
-                    "COSMOS_DATABASE_NAME"
-                },
-                description: "Cosmos DB database name"));
+    public static CosmosDbSettings GetCosmosSettings(IConfiguration configuration)
+    {
+        var logger = LoggerFactory.Create(builder => builder.AddConsole()).CreateLogger("DataConfiguration");
+        
+        var connectionString = RequireConnectionString(
+            configuration,
+            CosmosConnectionName,
+            fallbackConfigurationKeys: new[]
+            {
+                "CosmosDb:ConnectionString",
+                "CosmosDb__ConnectionString"
+            },
+            fallbackEnvironmentVariables: new[]
+            {
+                "COSMOSDB_CONNECTION_STRING",
+                "COSMOS_CONNECTION_STRING"
+            });
+
+        var databaseName = RequireSetting(
+            configuration,
+            keys: new[]
+            {
+                "CosmosDb:DatabaseName",
+                "CosmosDb__DatabaseName"
+            },
+            fallbackEnvironmentVariables: new[]
+            {
+                "COSMOSDB_DATABASE_NAME",
+                "COSMOS_DATABASE_NAME"
+            },
+            description: "Cosmos DB database name");
+
+        // Log the configuration for debugging
+        logger.LogInformation("Cosmos DB Configuration - Database: {DatabaseName}, Connection String Length: {ConnectionStringLength}", 
+            databaseName, connectionString?.Length ?? 0);
+
+        return new CosmosDbSettings(connectionString, databaseName);
+    }
 
     public static BlobStorageSettings GetBlobStorageSettings(IConfiguration configuration) =>
         new BlobStorageSettings(
@@ -143,9 +154,7 @@ internal static class DataConfiguration
     }
 }
 
-internal sealed record CosmosDbSettings(string ConnectionString, string DatabaseName);
+public sealed record CosmosDbSettings(string ConnectionString, string DatabaseName);
 
-internal sealed record BlobStorageSettings(string ConnectionString);
-
-
+public sealed record BlobStorageSettings(string ConnectionString);
 

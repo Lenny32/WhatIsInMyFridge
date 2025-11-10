@@ -24,6 +24,7 @@ internal static class ServiceCollectionExtensions
         services.AddScoped<ApplicationContext>();
         services.AddScoped<JwtTokenService>();
         services.AddSingleton<BlobStorageService>();
+        services.AddScoped<CosmosDbInitializer>();
 
         return services;
     }
