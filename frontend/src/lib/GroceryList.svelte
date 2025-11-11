@@ -1,7 +1,9 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { apiClient } from './api';
+  import { listToBuy } from './api';
   import type { components } from './api-types';
+  import type { FoodItem } from './types';
 
   type FoodCategory = components['schemas']['FoodCategory'];
 
@@ -18,6 +20,7 @@
   }
 
   let groceryItems: GroceryItem[] = [];
+  let shoppingList: FoodItem[] = [];
   let newItemName = '';
   let newItemQuantity = '';
   let newItemCategory: FoodCategory = 'Other';
@@ -40,6 +43,7 @@
 
   onMount(() => {
     loadGroceryItems();
+    loadShoppingList();
   });
 
   async function loadGroceryItems() {
@@ -58,6 +62,14 @@
       console.error(err);
     } finally {
       loading = false;
+    }
+  }
+
+  async function loadShoppingList() {
+    try {
+      shoppingList = await listToBuy();
+    } catch (error) {
+      console.error(error);
     }
   }
 
@@ -178,6 +190,22 @@
     <div class="error">{error}</div>
   {/if}
 
+  <div class="to-buy-section">
+    <h3>To Buy</h3>
+    {#if shoppingList.length === 0}
+      <p>Nothing to buy — you are fully stocked.</p>
+    {:else}
+      <ul class="to-buy-list">
+        {#each shoppingList as item}
+          <li>
+            <strong>{item.name}</strong> — {item.quantity}/{item.restockThreshold} {item.unit}
+            <span class="pill">{item.location}</span>
+          </li>
+        {/each}
+      </ul>
+    {/if}
+  </div>
+
   <div class="add-item-form">
     <h3>Add Item</h3>
     <form on:submit|preventDefault={addItem}>
@@ -289,6 +317,45 @@
     padding: 0.75rem;
     border-radius: 4px;
     margin-bottom: 1rem;
+  }
+
+  .to-buy-section {
+    background: var(--bg-card);
+    padding: 1.5rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+    box-shadow: var(--shadow-card);
+    border: 1px solid var(--border-secondary);
+  }
+
+  .to-buy-section h3 {
+    margin-bottom: 0.75rem;
+    font-size: 1.1rem;
+  }
+
+  .to-buy-section p {
+    color: var(--text-tertiary);
+    margin: 0;
+  }
+
+  .to-buy-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .to-buy-list li {
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border-secondary);
+    color: var(--text-secondary);
+  }
+
+  .to-buy-list li:last-child {
+    border-bottom: none;
+  }
+
+  .to-buy-list strong {
+    color: var(--text-primary);
   }
 
   .add-item-form {

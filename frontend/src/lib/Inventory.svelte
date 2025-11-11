@@ -6,7 +6,6 @@
     createItem,
     deleteItem,
     listItems,
-    listToBuy,
     updateItem
   } from "../lib/api";
 
@@ -40,7 +39,6 @@
 
   let activeLocation: StorageLocation = "Fridge";
   let items: FoodItem[] = [];
-  let shoppingList: FoodItem[] = [];
   let loading = false;
   let saving = false;
   let errorMessage: string | null = null;
@@ -59,12 +57,8 @@
   let form = emptyForm();
 
   onMount(async () => {
-    await reloadAll();
+    await loadItems(activeLocation);
   });
-
-  async function reloadAll() {
-    await Promise.all([loadItems(activeLocation), loadShoppingList()]);
-  }
 
   async function loadItems(location: StorageLocation) {
     loading = true;
@@ -77,14 +71,6 @@
       errorMessage = "Unable to load items.";
     } finally {
       loading = false;
-    }
-  }
-
-  async function loadShoppingList() {
-    try {
-      shoppingList = await listToBuy();
-    } catch (error) {
-      console.error(error);
     }
   }
 
@@ -117,7 +103,7 @@
       };
       await createItem(payload);
       form = emptyForm();
-      await reloadAll();
+      await loadItems(activeLocation);
     } catch (error) {
       console.error(error);
       errorMessage = "Unable to save item. Check the form values.";
@@ -131,7 +117,7 @@
     if (nextQuantity === item.quantity) return;
     try {
       await updateItem(item.id, { quantity: nextQuantity });
-      await reloadAll();
+      await loadItems(activeLocation);
     } catch (error) {
       console.error(error);
       errorMessage = "Unable to update quantity.";
@@ -142,7 +128,7 @@
     if (!confirm(`Remove ${item.name}?`)) return;
     try {
       await deleteItem(item.id);
-      await reloadAll();
+      await loadItems(activeLocation);
     } catch (error) {
       console.error(error);
       errorMessage = "Unable to delete item.";
@@ -358,20 +344,6 @@
           </button>
         </div>
       </form>
-
-      <h2>To Buy</h2>
-      {#if shoppingList.length === 0}
-        <p>Nothing to buy — you are fully stocked.</p>
-      {:else}
-        <ul>
-          {#each shoppingList as item}
-            <li>
-              <strong>{item.name}</strong> — {item.quantity}/{item.restockThreshold} {item.unit}
-              <span class="pill">{item.location}</span>
-            </li>
-          {/each}
-        </ul>
-      {/if}
     </aside>
   </div>
 </main>
