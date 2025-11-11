@@ -112,8 +112,13 @@ internal static class ServiceCollectionExtensions
         return services;
     }
 
-    public static IServiceCollection AddOpenApiDocumentation(this IServiceCollection services)
+    public static IServiceCollection AddOpenApiDocumentation(this IServiceCollection services, IWebHostEnvironment environment)
     {
+        if (environment.IsProduction())
+        {
+            return services;
+        }
+
         services.AddEndpointsApiExplorer();
         services.AddSwaggerGen(c =>
         {

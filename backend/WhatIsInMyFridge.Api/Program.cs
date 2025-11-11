@@ -13,7 +13,7 @@ builder.Services
     .AddJwtAuthentication(builder.Configuration)
     .AddConfiguredCors()
     .AddJsonOptions()
-    .AddOpenApiDocumentation();
+    .AddOpenApiDocumentation(builder.Environment);
 
 var app = builder.Build();
 
@@ -21,8 +21,13 @@ await app.EnsureCosmosDatabaseAsync();
 app.UseDevelopmentExceptionSerialization();
 
 app.UseCors();
-app.UseSwagger();
-app.UseSwaggerUI();
+
+if (!app.Environment.IsProduction())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
 app.UseAuthentication();
 app.UseAuthorization();
 
