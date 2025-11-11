@@ -16,7 +16,7 @@ public sealed class FoodInventoryStore
         _logger = logger;
     }
 
-    public async Task<IReadOnlyCollection<FoodItem>> GetItemsAsync(string householdId, StorageLocation? location = null)
+    public async Task<IReadOnlyCollection<FoodItem>> GetItemsAsync(Guid householdId, StorageLocation? location = null)
     {
         _logger.LogDebug("Retrieving food items for household {HouseholdId}, location {Location}", householdId, location?.ToString() ?? "all");
         var query = _context.FoodItems.Where(item => item.HouseholdId == householdId);
@@ -31,7 +31,7 @@ public sealed class FoodInventoryStore
         return items;
     }
 
-    public async Task<IReadOnlyCollection<FoodItem>> GetToBuyListAsync(string householdId)
+    public async Task<IReadOnlyCollection<FoodItem>> GetToBuyListAsync(Guid householdId)
     {
         _logger.LogDebug("Retrieving to-buy list for household {HouseholdId}", householdId);
         
@@ -49,22 +49,17 @@ public sealed class FoodInventoryStore
         return items;
     }
 
-    public async Task<FoodItem?> GetByIdAsync(string id, string? householdId = null)
+    public async Task<FoodItem?> GetByIdAsync(Guid id)
     {
-        // For Cosmos DB, we need to use Where instead of FindAsync when partition key != Id
-        // FindAsync would require both id and partition key
-        return await _context.FoodItems
-            .Where(item => item.Id == id)
-            .FirstOrDefaultAsync();
+        return await _context.FoodItems.FindAsync(id);
     }
 
-    public async Task<FoodItem> CreateAsync(string householdId, CreateFoodItemRequest request)
+    public async Task<FoodItem> CreateAsync(Guid householdId, CreateFoodItemRequest request)
     {
         _logger.LogInformation("Creating food item {Name} for household {HouseholdId}", request.Name, householdId);
         var now = DateTimeOffset.UtcNow;
         var item = new FoodItem
         {
-            Id = Guid.NewGuid().ToString("N"),
             HouseholdId = householdId,
             Name = request.Name.Trim(),
             Location = request.Location,
@@ -84,12 +79,10 @@ public sealed class FoodInventoryStore
         return item;
     }
 
-    public async Task<FoodItem?> UpdateAsync(string id, UpdateFoodItemRequest request)
+    public async Task<FoodItem?> UpdateAsync(Guid id, UpdateFoodItemRequest request)
     {
         _logger.LogInformation("Updating food item {ItemId}", id);
-        var existing = await _context.FoodItems
-            .Where(item => item.Id == id)
-            .FirstOrDefaultAsync();
+        var existing = await _context.FoodItems.FindAsync(id);
         if (existing == null)
         {
             _logger.LogWarning("Update failed: Food item {ItemId} not found", id);
@@ -111,12 +104,10 @@ public sealed class FoodInventoryStore
         return existing;
     }
 
-    public async Task<bool> DeleteAsync(string id)
+    public async Task<bool> DeleteAsync(Guid id)
     {
         _logger.LogInformation("Deleting food item {ItemId}", id);
-        var item = await _context.FoodItems
-            .Where(item => item.Id == id)
-            .FirstOrDefaultAsync();
+        var item = await _context.FoodItems.FindAsync(id);
         if (item == null)
         {
             _logger.LogWarning("Delete failed: Food item {ItemId} not found", id);

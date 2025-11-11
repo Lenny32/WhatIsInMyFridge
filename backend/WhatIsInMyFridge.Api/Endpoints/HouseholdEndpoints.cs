@@ -22,26 +22,26 @@ internal static class HouseholdEndpoints
 
         group.MapGet(string.Empty, async Task<IResult> (HttpContext httpContext, HouseholdStore householdStore, ILogger<Program> logger) =>
         {
-            var userId = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            logger.LogInformation("Getting households for user {UserId}", userId);
+            var userIdString = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            logger.LogInformation("Getting households for user {UserId}", userIdString);
             
-            if (string.IsNullOrEmpty(userId))
+            if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out Guid userId))
             {
                 logger.LogWarning("Unauthorized access to households endpoint");
                 return Results.Unauthorized();
             }
 
             var households = await householdStore.GetByUserIdAsync(userId);
-            logger.LogInformation("Retrieved {HouseholdCount} households for user {UserId}", households.Count(), userId);
+            logger.LogInformation("Retrieved {HouseholdCount} households for user {UserId}", households.Count, userId);
             return Results.Ok(households);
         });
 
         group.MapPost(string.Empty, async Task<IResult> (CreateHouseholdRequest request, HttpContext httpContext, HouseholdStore householdStore, UserStore userStore, ILogger<Program> logger) =>
         {
-            var userId = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            logger.LogInformation("Creating household '{HouseholdName}' for user {UserId}", request.Name, userId);
+            var userIdString = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            logger.LogInformation("Creating household '{HouseholdName}' for user {UserId}", request.Name, userIdString);
             
-            if (string.IsNullOrEmpty(userId))
+            if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out Guid userId))
             {
                 logger.LogWarning("Unauthorized attempt to create household");
                 return Results.Unauthorized();
@@ -64,7 +64,7 @@ internal static class HouseholdEndpoints
             {
                 Name = request.Name,
                 OwnerId = userId,
-                MemberIds = new List<string> { userId }
+                MemberIds = new List<Guid> { userId }
             };
 
             await householdStore.CreateAsync(household);
@@ -77,12 +77,12 @@ internal static class HouseholdEndpoints
             return Results.Created($"/api/households/{household.Id}", household);
         });
 
-        group.MapPost("/{householdId}/switch", async Task<IResult> (string householdId, HttpContext httpContext, HouseholdStore householdStore, UserStore userStore, JwtTokenService jwtTokenService, ILogger<Program> logger) =>
+        group.MapPost("/{householdId}/switch", async Task<IResult> (Guid householdId, HttpContext httpContext, HouseholdStore householdStore, UserStore userStore, JwtTokenService jwtTokenService, ILogger<Program> logger) =>
         {
-            var userId = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            logger.LogInformation("User {UserId} switching to household {HouseholdId}", userId, householdId);
+            var userIdString = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            logger.LogInformation("User {UserId} switching to household {HouseholdId}", userIdString, householdId);
             
-            if (string.IsNullOrEmpty(userId))
+            if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out Guid userId))
             {
                 logger.LogWarning("Unauthorized attempt to switch household");
                 return Results.Unauthorized();
@@ -112,12 +112,12 @@ internal static class HouseholdEndpoints
             return Results.Ok(new { token, household });
         });
 
-        group.MapPost("/{householdId}/members", async Task<IResult> (string householdId, AddHouseholdMemberRequest request, HttpContext httpContext, HouseholdStore householdStore, UserStore userStore, ILogger<Program> logger) =>
+        group.MapPost("/{householdId}/members", async Task<IResult> (Guid householdId, AddHouseholdMemberRequest request, HttpContext httpContext, HouseholdStore householdStore, UserStore userStore, ILogger<Program> logger) =>
         {
-            var userId = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            logger.LogInformation("Adding member {Email} to household {HouseholdId} by user {UserId}", request.Email, householdId, userId);
+            var userIdString = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            logger.LogInformation("Adding member {Email} to household {HouseholdId} by user {UserId}", request.Email, householdId, userIdString);
             
-            if (string.IsNullOrEmpty(userId))
+            if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out Guid userId))
             {
                 logger.LogWarning("Unauthorized attempt to add household member");
                 return Results.Unauthorized();
@@ -166,12 +166,12 @@ internal static class HouseholdEndpoints
             return Results.Ok(household);
         });
 
-        group.MapDelete("/{householdId}/members/{memberId}", async Task<IResult> (string householdId, string memberId, HttpContext httpContext, HouseholdStore householdStore, UserStore userStore, ILogger<Program> logger) =>
+        group.MapDelete("/{householdId}/members/{memberId}", async Task<IResult> (Guid householdId, Guid memberId, HttpContext httpContext, HouseholdStore householdStore, UserStore userStore, ILogger<Program> logger) =>
         {
-            var userId = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            logger.LogInformation("Removing member {MemberId} from household {HouseholdId} by user {UserId}", memberId, householdId, userId);
+            var userIdString = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            logger.LogInformation("Removing member {MemberId} from household {HouseholdId} by user {UserId}", memberId, householdId, userIdString);
             
-            if (string.IsNullOrEmpty(userId))
+            if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out Guid userId))
             {
                 logger.LogWarning("Unauthorized attempt to remove household member");
                 return Results.Unauthorized();
@@ -209,9 +209,9 @@ internal static class HouseholdEndpoints
             if (member != null)
             {
                 member.HouseholdIds.Remove(household.Id);
-                if (member.CurrentHouseholdId == household.Id)
+                if (member.CurrentHouseholdId == householdId)
                 {
-                    member.CurrentHouseholdId = member.HouseholdIds.FirstOrDefault();
+                    member.CurrentHouseholdId = member.HouseholdIds.Count > 0 ? member.HouseholdIds.FirstOrDefault() : null;
                 }
 
                 await userStore.UpdateAsync(member);

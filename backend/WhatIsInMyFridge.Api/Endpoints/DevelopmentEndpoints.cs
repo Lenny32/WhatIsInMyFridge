@@ -9,9 +9,6 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.EntityFrameworkCore;
 using WhatIsInMyFridge.Api.Services;
 using WhatIsInMyFridge.Api.Models;
-using System.Text.Json;
-using Microsoft.Azure.Cosmos;
-using WhatIsInMyFridge.Api.Configuration;
 
 namespace WhatIsInMyFridge.Api.Endpoints;
 
@@ -68,7 +65,14 @@ internal static class DevelopmentEndpoints
                 return Results.Unauthorized();
             }
 
-            var currentUser = await userStore.GetByIdAsync(userId);
+            // Parse userId as Guid
+            if (!Guid.TryParse(userId, out var userGuid))
+            {
+                logger.LogWarning("Invalid user ID format: {UserId}", userId);
+                return Results.BadRequest("Invalid user ID format");
+            }
+
+            var currentUser = await userStore.GetByIdAsync(userGuid);
             if (currentUser == null || !currentUser.IsAdmin)
             {
                 logger.LogWarning("Non-admin user {UserId} attempted to access database test endpoint", userId);
@@ -78,9 +82,9 @@ internal static class DevelopmentEndpoints
             logger.LogInformation("Admin {UserId} starting full CRUD database test", userId);
 
             var testResults = new List<object>();
-            var testHouseholdId = currentUser.CurrentHouseholdId ?? string.Empty;
+            Guid? testHouseholdId = currentUser.CurrentHouseholdId;
 
-            if (string.IsNullOrEmpty(testHouseholdId))
+            if (testHouseholdId == null)
             {
                 logger.LogWarning("Admin user {UserId} has no household assigned, creating test household", userId);
                 
@@ -88,10 +92,9 @@ internal static class DevelopmentEndpoints
                 {
                     var testHousehold = new Household
                     {
-                        Id = Guid.NewGuid().ToString("N"),
                         Name = "Test Household",
-                        OwnerId = userId,
-                        MemberIds = new List<string> { userId },
+                        OwnerId = userGuid,
+                        MemberIds = new List<Guid> { userGuid },
                         CreatedAt = DateTimeOffset.UtcNow,
                         UpdatedAt = DateTimeOffset.UtcNow
                     };
@@ -114,15 +117,14 @@ internal static class DevelopmentEndpoints
             {
                 logger.LogDebug("Testing FoodItems CRUD operations");
                 var operations = new List<string>();
-                string? testItemId = null;
+                Guid? testItemId = null;
 
                 try
                 {
                     // CREATE
                     var foodItem = new FoodItem
                     {
-                        Id = Guid.NewGuid().ToString("N"),
-                        HouseholdId = testHouseholdId,
+                        HouseholdId = testHouseholdId.Value,
                         Name = "Test Food Item",
                         Location = StorageLocation.Fridge,
                         Quantity = 5,
@@ -138,10 +140,8 @@ internal static class DevelopmentEndpoints
                     testItemId = foodItem.Id;
                     operations.Add("Create: Success");
 
-                    // READ
-                    var readItem = await dbContext.FoodItems
-                        .Where(item => item.Id == testItemId)
-                        .FirstOrDefaultAsync();
+                    // READ - Use FindAsync for partition key-based lookup
+                    var readItem = await dbContext.FoodItems.FindAsync(testItemId);
                     if (readItem != null && readItem.Name == "Test Food Item")
                     {
                         operations.Add("Read: Success");
@@ -159,9 +159,7 @@ internal static class DevelopmentEndpoints
                         readItem.UpdatedAt = DateTimeOffset.UtcNow;
                         await dbContext.SaveChangesAsync();
                         
-                        var verifyUpdate = await dbContext.FoodItems
-                            .Where(item => item.Id == testItemId)
-                            .FirstOrDefaultAsync();
+                        var verifyUpdate = await dbContext.FoodItems.FindAsync(testItemId);
                         if (verifyUpdate != null && verifyUpdate.Name == "Updated Test Food Item" && verifyUpdate.Quantity == 10)
                         {
                             operations.Add("Update: Success");
@@ -175,17 +173,13 @@ internal static class DevelopmentEndpoints
                     // DELETE
                     if (testItemId != null)
                     {
-                        var itemToDelete = await dbContext.FoodItems
-                            .Where(item => item.Id == testItemId)
-                            .FirstOrDefaultAsync();
+                        var itemToDelete = await dbContext.FoodItems.FindAsync(testItemId);
                         if (itemToDelete != null)
                         {
                             dbContext.FoodItems.Remove(itemToDelete);
                             await dbContext.SaveChangesAsync();
                             
-                            var verifyDelete = await dbContext.FoodItems
-                                .Where(item => item.Id == testItemId)
-                                .FirstOrDefaultAsync();
+                            var verifyDelete = await dbContext.FoodItems.FindAsync(testItemId);
                             if (verifyDelete == null)
                             {
                                 operations.Add("Delete: Success");
@@ -226,15 +220,14 @@ internal static class DevelopmentEndpoints
             {
                 logger.LogDebug("Testing GroceryItems CRUD operations");
                 var operations = new List<string>();
-                string? testItemId = null;
+                Guid? testItemId = null;
 
                 try
                 {
                     // CREATE
                     var groceryItem = new GroceryItem
                     {
-                        Id = Guid.NewGuid().ToString("N"),
-                        HouseholdId = testHouseholdId,
+                        HouseholdId = testHouseholdId.Value,
                         Name = "Test Grocery Item",
                         Quantity = 3,
                         Category = FoodCategory.Dairy,
@@ -248,10 +241,8 @@ internal static class DevelopmentEndpoints
                     testItemId = groceryItem.Id;
                     operations.Add("Create: Success");
 
-                    // READ
-                    var readItem = await dbContext.GroceryItems
-                        .Where(item => item.Id == testItemId)
-                        .FirstOrDefaultAsync();
+                    // READ - Use FindAsync for partition key-based lookup
+                    var readItem = await dbContext.GroceryItems.FindAsync(testItemId);
                     if (readItem != null && readItem.Name == "Test Grocery Item")
                     {
                         operations.Add("Read: Success");
@@ -270,9 +261,7 @@ internal static class DevelopmentEndpoints
                         readItem.UpdatedAt = DateTimeOffset.UtcNow;
                         await dbContext.SaveChangesAsync();
                         
-                        var verifyUpdate = await dbContext.GroceryItems
-                            .Where(item => item.Id == testItemId)
-                            .FirstOrDefaultAsync();
+                        var verifyUpdate = await dbContext.GroceryItems.FindAsync(testItemId);
                         if (verifyUpdate != null && verifyUpdate.Name == "Updated Grocery Item" && verifyUpdate.IsPurchased)
                         {
                             operations.Add("Update: Success");
@@ -286,17 +275,13 @@ internal static class DevelopmentEndpoints
                     // DELETE
                     if (testItemId != null)
                     {
-                        var itemToDelete = await dbContext.GroceryItems
-                            .Where(item => item.Id == testItemId)
-                            .FirstOrDefaultAsync();
+                        var itemToDelete = await dbContext.GroceryItems.FindAsync(testItemId);
                         if (itemToDelete != null)
                         {
                             dbContext.GroceryItems.Remove(itemToDelete);
                             await dbContext.SaveChangesAsync();
                             
-                            var verifyDelete = await dbContext.GroceryItems
-                                .Where(item => item.Id == testItemId)
-                                .FirstOrDefaultAsync();
+                            var verifyDelete = await dbContext.GroceryItems.FindAsync(testItemId);
                             if (verifyDelete == null)
                             {
                                 operations.Add("Delete: Success");
@@ -337,15 +322,14 @@ internal static class DevelopmentEndpoints
             {
                 logger.LogDebug("Testing Recipes CRUD operations");
                 var operations = new List<string>();
-                string? testItemId = null;
+                Guid? testItemId = null;
 
                 try
                 {
                     // CREATE
                     var recipe = new Recipe
                     {
-                        Id = Guid.NewGuid().ToString("N"),
-                        HouseholdId = testHouseholdId,
+                        HouseholdId = testHouseholdId.Value,
                         Name = "Test Recipe",
                         Description = "A test recipe for CRUD operations",
                         Servings = 4,
@@ -371,10 +355,8 @@ internal static class DevelopmentEndpoints
                     testItemId = recipe.Id;
                     operations.Add("Create: Success");
 
-                    // READ
-                    var readItem = await dbContext.Recipes
-                        .Where(item => item.Id == testItemId)
-                        .FirstOrDefaultAsync();
+                    // READ - Use FindAsync for partition key-based lookup
+                    var readItem = await dbContext.Recipes.FindAsync(testItemId);
                     if (readItem != null && readItem.Name == "Test Recipe")
                     {
                         operations.Add("Read: Success");
@@ -393,9 +375,7 @@ internal static class DevelopmentEndpoints
                         readItem.UpdatedAt = DateTimeOffset.UtcNow;
                         await dbContext.SaveChangesAsync();
                         
-                        var verifyUpdate = await dbContext.Recipes
-                            .Where(item => item.Id == testItemId)
-                            .FirstOrDefaultAsync();
+                        var verifyUpdate = await dbContext.Recipes.FindAsync(testItemId);
                         if (verifyUpdate != null && verifyUpdate.Name == "Updated Test Recipe" && verifyUpdate.Servings == 6)
                         {
                             operations.Add("Update: Success");
@@ -409,17 +389,13 @@ internal static class DevelopmentEndpoints
                     // DELETE
                     if (testItemId != null)
                     {
-                        var itemToDelete = await dbContext.Recipes
-                            .Where(item => item.Id == testItemId)
-                            .FirstOrDefaultAsync();
+                        var itemToDelete = await dbContext.Recipes.FindAsync(testItemId);
                         if (itemToDelete != null)
                         {
                             dbContext.Recipes.Remove(itemToDelete);
                             await dbContext.SaveChangesAsync();
                             
-                            var verifyDelete = await dbContext.Recipes
-                                .Where(item => item.Id == testItemId)
-                                .FirstOrDefaultAsync();
+                            var verifyDelete = await dbContext.Recipes.FindAsync(testItemId);
                             if (verifyDelete == null)
                             {
                                 operations.Add("Delete: Success");
@@ -460,17 +436,16 @@ internal static class DevelopmentEndpoints
             {
                 logger.LogDebug("Testing Households CRUD operations");
                 var operations = new List<string>();
-                string? testItemId = null;
+                Guid? testItemId = null;
 
                 try
                 {
                     // CREATE
                     var household = new Household
                     {
-                        Id = Guid.NewGuid().ToString("N"),
                         Name = "Test CRUD Household",
-                        OwnerId = userId,
-                        MemberIds = new List<string> { userId },
+                        OwnerId = userGuid,
+                        MemberIds = new List<Guid> { userGuid },
                         CreatedAt = DateTimeOffset.UtcNow,
                         UpdatedAt = DateTimeOffset.UtcNow
                     };
@@ -479,10 +454,8 @@ internal static class DevelopmentEndpoints
                     testItemId = household.Id;
                     operations.Add("Create: Success");
 
-                    // READ
-                    var readItem = await dbContext.Households
-                        .Where(item => item.Id == testItemId)
-                        .FirstOrDefaultAsync();
+                    // READ - Use FindAsync for partition key-based lookup
+                    var readItem = await dbContext.Households.FindAsync(testItemId);
                     if (readItem != null && readItem.Name == "Test CRUD Household")
                     {
                         operations.Add("Read: Success");
@@ -499,9 +472,7 @@ internal static class DevelopmentEndpoints
                         readItem.UpdatedAt = DateTimeOffset.UtcNow;
                         await dbContext.SaveChangesAsync();
                         
-                        var verifyUpdate = await dbContext.Households
-                            .Where(item => item.Id == testItemId)
-                            .FirstOrDefaultAsync();
+                        var verifyUpdate = await dbContext.Households.FindAsync(testItemId);
                         if (verifyUpdate != null && verifyUpdate.Name == "Updated CRUD Household")
                         {
                             operations.Add("Update: Success");
@@ -515,17 +486,13 @@ internal static class DevelopmentEndpoints
                     // DELETE
                     if (testItemId != null)
                     {
-                        var itemToDelete = await dbContext.Households
-                            .Where(item => item.Id == testItemId)
-                            .FirstOrDefaultAsync();
+                        var itemToDelete = await dbContext.Households.FindAsync(testItemId);
                         if (itemToDelete != null)
                         {
                             dbContext.Households.Remove(itemToDelete);
                             await dbContext.SaveChangesAsync();
                             
-                            var verifyDelete = await dbContext.Households
-                                .Where(item => item.Id == testItemId)
-                                .FirstOrDefaultAsync();
+                            var verifyDelete = await dbContext.Households.FindAsync(testItemId);
                             if (verifyDelete == null)
                             {
                                 operations.Add("Delete: Success");
@@ -586,112 +553,6 @@ internal static class DevelopmentEndpoints
                 BuildConfiguration = "Debug"
             });
         });
-
-        // Add diagnostics endpoint for both development and staging (not production)
-        if (!environment.IsProduction())
-        {
-            group.MapGet("/cosmos-diagnostics", async (
-                CosmosClient cosmosClient, 
-                CosmosDbSettings settings, 
-                ILogger<Program> logger) =>
-            {
-                try
-                {
-                    logger.LogInformation("Running Cosmos DB diagnostics");
-                    
-                    var diagnostics = new
-                    {
-                        DatabaseName = settings.DatabaseName,
-                        ConnectionStringLength = settings.ConnectionString?.Length ?? 0,
-                        ConnectionStringStart = settings.ConnectionString?.Substring(0, Math.Min(50, settings.ConnectionString.Length)) ?? "null",
-                        Environment = environment.EnvironmentName
-                    };
-                    
-                    // Test database access
-                    try
-                    {
-                        var database = cosmosClient.GetDatabase(settings.DatabaseName);
-                        var response = await database.ReadAsync();
-                        
-                        // Try to list containers (simplified approach)
-                        var containers = new List<string> { "Users", "Households", "FoodItems", "Recipes", "GroceryItems" };
-                        var containerStatus = new Dictionary<string, string>();
-                        
-                        foreach (var containerName in containers)
-                        {
-                            try
-                            {
-                                var container = database.GetContainer(containerName);
-                                var containerResponse = await container.ReadContainerAsync();
-                                containerStatus[containerName] = "Exists";
-                            }
-                            catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
-                            {
-                                containerStatus[containerName] = "Missing";
-                            }
-                            catch (Exception ex)
-                            {
-                                containerStatus[containerName] = $"Error: {ex.Message}";
-                            }
-                        }
-                        
-                        return Results.Ok(new
-                        {
-                            Status = "Success",
-                            Configuration = diagnostics,
-                            Database = new
-                            {
-                                StatusCode = response.StatusCode,
-                                Exists = true,
-                                ContainerStatus = containerStatus
-                            }
-                        });
-                    }
-                    catch (CosmosException ex)
-                    {
-                        return Results.Ok(new
-                        {
-                            Status = "DatabaseError",
-                            Configuration = diagnostics,
-                            Error = new
-                            {
-                                StatusCode = ex.StatusCode,
-                                Message = ex.Message,
-                                ResponseBody = ex.ResponseBody
-                            }
-                        });
-                    }
-                }
-                catch (Exception ex)
-                {
-                    logger.LogError(ex, "Cosmos DB diagnostics failed");
-                    return Results.Problem($"Diagnostics failed: {ex.Message}");
-                }
-            });
-        }
-
-        // Only allow full reset in development
-        if (environment.IsDevelopment())
-        {
-            group.MapPost("/reset-data", async (AppDbContext dbContext, ILogger<Program> logger) =>
-            {
-                logger.LogWarning("Development reset endpoint called - this will delete all data!");
-                
-                try
-                {
-                    await dbContext.Database.EnsureDeletedAsync();
-                    await dbContext.Database.EnsureCreatedAsync();
-                    
-                    logger.LogInformation("Database reset completed");
-                    return Results.Ok(new { message = "Database reset successfully" });
-                }
-                catch (Exception ex)
-                {
-                    logger.LogError(ex, "Failed to reset database");
-                    return Results.Problem($"Reset failed: {ex.Message}");
-                }
-            });
-        }
 
         return endpoints;
     }

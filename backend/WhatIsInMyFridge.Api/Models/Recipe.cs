@@ -2,8 +2,8 @@ namespace WhatIsInMyFridge.Api.Models;
 
 public sealed class Recipe
 {
-    public string Id { get; set; } = string.Empty;
-    public string HouseholdId { get; set; } = string.Empty;
+    public Guid Id { get; set; } = Guid.CreateVersion7();
+    public Guid HouseholdId { get; set; }
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
     public int Servings { get; set; } = 1;

@@ -39,9 +39,9 @@ public sealed class CosmosDbInitializer
             {
                 new { Name = "Users", PartitionKey = "/id" },
                 new { Name = "Households", PartitionKey = "/id" },
-                new { Name = "FoodItems", PartitionKey = "/householdId" },
-                new { Name = "Recipes", PartitionKey = "/householdId" },
-                new { Name = "GroceryItems", PartitionKey = "/householdId" }
+                new { Name = "FoodItems", PartitionKey = "/id" },
+                new { Name = "Recipes", PartitionKey = "/id" },
+                new { Name = "GroceryItems", PartitionKey = "/id" }
             };
 
             // Create each container

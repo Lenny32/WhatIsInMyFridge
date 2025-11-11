@@ -2,8 +2,8 @@ namespace WhatIsInMyFridge.Api.Models;
 
 public sealed class FoodItem
 {
-    public string Id { get; set; } = string.Empty;
-    public string HouseholdId { get; set; } = string.Empty;
+    public Guid Id { get; set; } = Guid.CreateVersion7();
+    public Guid HouseholdId { get; set; }
     public string Name { get; set; } = string.Empty;
     public StorageLocation Location { get; set; } = StorageLocation.Fridge;
     public decimal Quantity { get; set; }

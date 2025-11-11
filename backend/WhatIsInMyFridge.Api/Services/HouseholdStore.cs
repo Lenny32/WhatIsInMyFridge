@@ -15,12 +15,12 @@ public sealed class HouseholdStore
         _logger = logger;
     }
 
-    public async Task<Household?> GetByIdAsync(string id)
+    public async Task<Household?> GetByIdAsync(Guid id)
     {
         return await _context.Households.FindAsync(id);
     }
 
-    public async Task<IReadOnlyCollection<Household>> GetByUserIdAsync(string userId)
+    public async Task<IReadOnlyCollection<Household>> GetByUserIdAsync(Guid userId)
     {
         // Alternative approach: Use User.HouseholdIds to avoid ARRAY_CONTAINS query on Household.MemberIds
         // This bypasses the Cosmos DB emulator indexing issue with array operations
@@ -63,14 +63,18 @@ public sealed class HouseholdStore
             return null;
         }
 
-        household.UpdatedAt = DateTimeOffset.UtcNow;
-        _context.Entry(existing).CurrentValues.SetValues(household);
+        // Update individual properties to avoid partition key conflicts
+        existing.Name = household.Name;
+        existing.MemberIds = household.MemberIds;
+        existing.OwnerId = household.OwnerId;
+        existing.UpdatedAt = DateTimeOffset.UtcNow;
+        
         await _context.SaveChangesAsync();
         _logger.LogInformation("Household {HouseholdId} updated successfully", household.Id);
-        return household;
+        return existing;
     }
 
-    public async Task<bool> DeleteAsync(string id)
+    public async Task<bool> DeleteAsync(Guid id)
     {
         _logger.LogInformation("Deleting household {HouseholdId}", id);
         var household = await _context.Households.FindAsync(id);

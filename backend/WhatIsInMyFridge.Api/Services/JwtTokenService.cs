@@ -40,7 +40,7 @@ public sealed class JwtTokenService
         _logger.LogInformation(" JwtTokenService initialized with issuer: {Issuer}, audience: {Audience}", _jwtIssuer, _jwtAudience);
     }
 
-    public string GenerateToken(string userId, string householdId, bool isAdmin = false)
+    public string GenerateToken(Guid userId, Guid householdId, bool isAdmin = false)
     {
         _logger.LogInformation("Generating JWT token for user {UserId}, household {HouseholdId}, isAdmin: {IsAdmin}", 
             userId, householdId, isAdmin);
@@ -49,8 +49,8 @@ public sealed class JwtTokenService
 
         var claims = new List<Claim>
         {
-            new Claim(JwtRegisteredClaimNames.Sub, userId),
-            new Claim("householdId", householdId),
+            new Claim(JwtRegisteredClaimNames.Sub, userId.ToString()),
+            new Claim("householdId", householdId.ToString()),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
 

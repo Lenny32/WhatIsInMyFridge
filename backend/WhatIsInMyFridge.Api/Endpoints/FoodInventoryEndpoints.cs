@@ -20,10 +20,10 @@ internal static class FoodInventoryEndpoints
 
         group.MapGet(string.Empty, async Task<IResult> (string? location, HttpContext httpContext, FoodInventoryStore store, ILogger<Program> logger) =>
         {
-            var householdId = httpContext.User.FindFirst("householdId")?.Value;
-            logger.LogInformation("Getting food inventory for household {HouseholdId}, location: {Location}", householdId, location ?? "all");
+            var householdIdString = httpContext.User.FindFirst("householdId")?.Value;
+            logger.LogInformation("Getting food inventory for household {HouseholdId}, location: {Location}", householdIdString, location ?? "all");
             
-            if (string.IsNullOrEmpty(householdId))
+            if (string.IsNullOrEmpty(householdIdString) || !Guid.TryParse(householdIdString, out Guid householdId))
             {
                 logger.LogWarning("Unauthorized access to food inventory");
                 return Results.Unauthorized();
@@ -46,27 +46,27 @@ internal static class FoodInventoryEndpoints
             }
 
             var items = await store.GetItemsAsync(householdId, parsedLocation);
-            logger.LogInformation("Retrieved {ItemCount} food items for household {HouseholdId}", items.Count(), householdId);
+            logger.LogInformation("Retrieved {ItemCount} food items for household {HouseholdId}", items.Count, householdId);
             return Results.Ok(items);
         });
 
         group.MapGet("/to-buy", async Task<IResult> (HttpContext httpContext, FoodInventoryStore store, ILogger<Program> logger) =>
         {
-            var householdId = httpContext.User.FindFirst("householdId")?.Value;
-            logger.LogInformation("Getting to-buy list for household {HouseholdId}", householdId);
+            var householdIdString = httpContext.User.FindFirst("householdId")?.Value;
+            logger.LogInformation("Getting to-buy list for household {HouseholdId}", householdIdString);
             
-            if (string.IsNullOrEmpty(householdId))
+            if (string.IsNullOrEmpty(householdIdString) || !Guid.TryParse(householdIdString, out Guid householdId))
             {
                 logger.LogWarning("Unauthorized access to to-buy list");
                 return Results.Unauthorized();
             }
 
             var items = await store.GetToBuyListAsync(householdId);
-            logger.LogInformation("Retrieved {ItemCount} items in to-buy list for household {HouseholdId}", items.Count(), householdId);
+            logger.LogInformation("Retrieved {ItemCount} items in to-buy list for household {HouseholdId}", items.Count, householdId);
             return Results.Ok(items);
         });
 
-        group.MapGet("/{id}", async Task<IResult> (string id, FoodInventoryStore store, ILogger<Program> logger) =>
+        group.MapGet("/{id}", async Task<IResult> (Guid id, FoodInventoryStore store, ILogger<Program> logger) =>
         {
             logger.LogInformation("Getting food item {ItemId}", id);
             var item = await store.GetByIdAsync(id);
@@ -81,10 +81,10 @@ internal static class FoodInventoryEndpoints
 
         group.MapPost(string.Empty, async Task<IResult> (CreateFoodItemRequest request, HttpContext httpContext, FoodInventoryStore store, ILogger<Program> logger) =>
         {
-            var householdId = httpContext.User.FindFirst("householdId")?.Value;
-            logger.LogInformation("Creating food item for household {HouseholdId}: {ItemName}", householdId, request.Name);
+            var householdIdString = httpContext.User.FindFirst("householdId")?.Value;
+            logger.LogInformation("Creating food item for household {HouseholdId}: {ItemName}", householdIdString, request.Name);
             
-            if (string.IsNullOrEmpty(householdId))
+            if (string.IsNullOrEmpty(householdIdString) || !Guid.TryParse(householdIdString, out Guid householdId))
             {
                 logger.LogWarning("Unauthorized attempt to create food item");
                 return Results.Unauthorized();
@@ -101,7 +101,7 @@ internal static class FoodInventoryEndpoints
             return Results.Created($"/api/items/{item.Id}", item);
         });
 
-        group.MapPatch("/{id}", async Task<IResult> (string id, UpdateFoodItemRequest request, FoodInventoryStore store, ILogger<Program> logger) =>
+        group.MapPatch("/{id}", async Task<IResult> (Guid id, UpdateFoodItemRequest request, FoodInventoryStore store, ILogger<Program> logger) =>
         {
             logger.LogInformation("Updating food item {ItemId}", id);
             
@@ -125,7 +125,7 @@ internal static class FoodInventoryEndpoints
             return updated is null ? Results.NotFound() : Results.Ok(updated);
         });
 
-        group.MapDelete("/{id}", async Task<IResult> (string id, FoodInventoryStore store, ILogger<Program> logger) =>
+        group.MapDelete("/{id}", async Task<IResult> (Guid id, FoodInventoryStore store, ILogger<Program> logger) =>
         {
             logger.LogInformation("Deleting food item {ItemId}", id);
             var deleted = await store.DeleteAsync(id);

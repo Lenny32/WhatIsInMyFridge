@@ -29,7 +29,14 @@ internal static class AdminEndpoints
                 return Results.Unauthorized();
             }
 
-            var currentUser = await userStore.GetByIdAsync(userId);
+            // Parse userId as Guid
+            if (!Guid.TryParse(userId, out var userGuid))
+            {
+                logger.LogWarning("Invalid user ID format: {UserId}", userId);
+                return Results.BadRequest("Invalid user ID format");
+            }
+
+            var currentUser = await userStore.GetByIdAsync(userGuid);
             if (currentUser == null || !currentUser.IsAdmin)
             {
                 logger.LogWarning("Non-admin user {UserId} attempted to access admin endpoint", userId);
@@ -52,7 +59,7 @@ internal static class AdminEndpoints
             return Results.Ok(userList);
         });
 
-        group.MapPost("/users/{id}/reset-password", async Task<IResult> (string id, ResetPasswordRequest request, HttpContext httpContext, UserStore userStore, PasswordHasher passwordHasher, ILogger<Program> logger) =>
+        group.MapPost("/users/{id}/reset-password", async Task<IResult> (Guid id, ResetPasswordRequest request, HttpContext httpContext, UserStore userStore, PasswordHasher passwordHasher, ILogger<Program> logger) =>
         {
             var userId = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             logger.LogInformation("Resetting password for user {TargetUserId} - Requested by {AdminUserId}", id, userId);
@@ -63,7 +70,14 @@ internal static class AdminEndpoints
                 return Results.Unauthorized();
             }
 
-            var currentUser = await userStore.GetByIdAsync(userId);
+            // Parse userId as Guid
+            if (!Guid.TryParse(userId, out var adminUserGuid))
+            {
+                logger.LogWarning("Invalid admin user ID format: {UserId}", userId);
+                return Results.BadRequest("Invalid user ID format");
+            }
+
+            var currentUser = await userStore.GetByIdAsync(adminUserGuid);
             if (currentUser == null || !currentUser.IsAdmin)
             {
                 logger.LogWarning("Non-admin user {UserId} attempted to reset password for {TargetUserId}", userId, id);

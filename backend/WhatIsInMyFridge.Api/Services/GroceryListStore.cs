@@ -16,7 +16,7 @@ public sealed class GroceryListStore
         _logger = logger;
     }
 
-    public async Task<IReadOnlyCollection<GroceryItem>> GetAllAsync(string householdId)
+    public async Task<IReadOnlyCollection<GroceryItem>> GetAllAsync(Guid householdId)
     {
         _logger.LogDebug("Retrieving grocery items for household {HouseholdId}", householdId);
         var items = await _context.GroceryItems
@@ -30,21 +30,17 @@ public sealed class GroceryListStore
             .ToArray();
     }
 
-    public async Task<GroceryItem?> GetByIdAsync(string id)
+    public async Task<GroceryItem?> GetByIdAsync(Guid id)
     {
-        // For Cosmos DB, use Where instead of FindAsync when partition key != Id
-        return await _context.GroceryItems
-            .Where(item => item.Id == id)
-            .FirstOrDefaultAsync();
+        return await _context.GroceryItems.FindAsync(id);
     }
 
-    public async Task<GroceryItem> CreateAsync(string householdId, CreateGroceryItemRequest request)
+    public async Task<GroceryItem> CreateAsync(Guid householdId, CreateGroceryItemRequest request)
     {
         _logger.LogInformation("Creating grocery item {Name} for household {HouseholdId}", request.Name, householdId);
         var now = DateTimeOffset.UtcNow;
         var item = new GroceryItem
         {
-            Id = Guid.NewGuid().ToString(),
             HouseholdId = householdId,
             Name = request.Name.Trim(),
             Quantity = request.Quantity,
@@ -61,12 +57,10 @@ public sealed class GroceryListStore
         return item;
     }
 
-    public async Task<GroceryItem?> UpdateAsync(string id, UpdateGroceryItemRequest request)
+    public async Task<GroceryItem?> UpdateAsync(Guid id, UpdateGroceryItemRequest request)
     {
         _logger.LogInformation("Updating grocery item {ItemId}", id);
-        var existing = await _context.GroceryItems
-            .Where(item => item.Id == id)
-            .FirstOrDefaultAsync();
+        var existing = await _context.GroceryItems.FindAsync(id);
         if (existing == null)
         {
             _logger.LogWarning("Update failed: Grocery item {ItemId} not found", id);
@@ -85,12 +79,10 @@ public sealed class GroceryListStore
         return existing;
     }
 
-    public async Task<bool> DeleteAsync(string id)
+    public async Task<bool> DeleteAsync(Guid id)
     {
         _logger.LogInformation("Deleting grocery item {ItemId}", id);
-        var item = await _context.GroceryItems
-            .Where(item => item.Id == id)
-            .FirstOrDefaultAsync();
+        var item = await _context.GroceryItems.FindAsync(id);
         if (item == null)
         {
             _logger.LogWarning("Delete failed: Grocery item {ItemId} not found", id);
@@ -103,7 +95,7 @@ public sealed class GroceryListStore
         return true;
     }
 
-    public async Task<int> ClearPurchasedAsync(string householdId)
+    public async Task<int> ClearPurchasedAsync(Guid householdId)
     {
         _logger.LogInformation("Clearing purchased items for household {HouseholdId}", householdId);
         var purchasedItems = await _context.GroceryItems

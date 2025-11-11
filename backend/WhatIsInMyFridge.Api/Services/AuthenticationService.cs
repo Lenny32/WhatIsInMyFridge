@@ -78,9 +78,9 @@ public sealed class AuthenticationService
         return (user, household);
     }
 
-    public async Task<ApplicationContext?> BuildContextAsync(string userId, string? householdId = null)
+    public async Task<ApplicationContext?> BuildContextAsync(Guid userId, Guid? householdId = null)
     {
-        _logger.LogDebug("Building application context for user {UserId}, household {HouseholdId}", userId, householdId ?? "current");
+        _logger.LogDebug("Building application context for user {UserId}, household {HouseholdId}", userId, householdId?.ToString() ?? "current");
         
         var user = await _userStore.GetByIdAsync(userId);
         if (user == null)
@@ -90,13 +90,13 @@ public sealed class AuthenticationService
         }
 
         var targetHouseholdId = householdId ?? user.CurrentHouseholdId;
-        if (string.IsNullOrEmpty(targetHouseholdId))
+        if (targetHouseholdId == null)
         {
             _logger.LogWarning("Failed to build context: No household ID for user {UserId}", userId);
             return null;
         }
 
-        var household = await _householdStore.GetByIdAsync(targetHouseholdId);
+        var household = await _householdStore.GetByIdAsync(targetHouseholdId.Value);
         if (household == null || !household.MemberIds.Contains(userId))
         {
             _logger.LogWarning("Failed to build context: User {UserId} not member of household {HouseholdId}", userId, targetHouseholdId);

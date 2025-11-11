@@ -15,7 +15,7 @@ public sealed class UserStore
         _logger = logger;
     }
 
-    public async Task<User?> GetByIdAsync(string id)
+    public async Task<User?> GetByIdAsync(Guid id)
     {
         return await _context.Users.FindAsync(id);
     }
@@ -38,20 +38,27 @@ public sealed class UserStore
     public async Task<User?> UpdateAsync(User user)
     {
         _logger.LogInformation("Updating user {UserId}", user.Id);
-        var existing = await _context.Users.FindAsync(user.Id);
+        var existing = await _context.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Id == user.Id);
+        
         if (existing == null)
         {
             _logger.LogWarning("Update failed: User {UserId} not found", user.Id);
             return null;
         }
 
+        // Update timestamps before saving
         user.UpdatedAt = DateTimeOffset.UtcNow;
-        _context.Entry(existing).CurrentValues.SetValues(user);
+        
+        // Attach and mark as modified - this respects the partition key
+        _context.Users.Update(user);
         await _context.SaveChangesAsync();
+        
         _logger.LogInformation("User {UserId} updated successfully", user.Id);
         return user;
     }
-
+    
     public async Task<List<User>> GetAllUsersAsync()
     {
         _logger.LogDebug("Retrieving all users");

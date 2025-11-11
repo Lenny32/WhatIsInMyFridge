@@ -16,7 +16,7 @@ public sealed class RecipeStore
         _logger = logger;
     }
 
-    public async Task<IReadOnlyCollection<Recipe>> GetRecipesAsync(string householdId)
+    public async Task<IReadOnlyCollection<Recipe>> GetRecipesAsync(Guid householdId)
     {
         _logger.LogDebug("Retrieving recipes for household {HouseholdId}", householdId);
         var recipes = await _context.Recipes
@@ -28,20 +28,19 @@ public sealed class RecipeStore
         return recipes.OrderByDescending(r => r.CreatedAt).ToArray();
     }
 
-    public async Task<Recipe?> GetByIdAsync(string id)
+    public async Task<Recipe?> GetByIdAsync(Guid id)
     {
         return await _context.Recipes
             .Include(r => r.Ingredients)
             .FirstOrDefaultAsync(r => r.Id == id);
     }
 
-    public async Task<Recipe> CreateAsync(string householdId, CreateRecipeRequest request)
+    public async Task<Recipe> CreateAsync(Guid householdId, CreateRecipeRequest request)
     {
         _logger.LogInformation("Creating recipe {Name} for household {HouseholdId}", request.Name, householdId);
         var now = DateTimeOffset.UtcNow;
         var recipe = new Recipe
         {
-            Id = Guid.NewGuid().ToString("N"),
             HouseholdId = householdId,
             Name = request.Name.Trim(),
             Description = request.Description?.Trim(),
@@ -67,7 +66,7 @@ public sealed class RecipeStore
         return recipe;
     }
 
-    public async Task<Recipe?> UpdateAsync(string id, UpdateRecipeRequest request)
+    public async Task<Recipe?> UpdateAsync(Guid id, UpdateRecipeRequest request)
     {
         _logger.LogInformation("Updating recipe {RecipeId}", id);
         var existing = await _context.Recipes
@@ -92,7 +91,6 @@ public sealed class RecipeStore
             // With owned entities, just replace the list - EF will handle the rest
             existing.Ingredients = request.Ingredients.Select(i => new RecipeIngredient
             {
-                RecipeId = existing.Id,
                 Name = i.Name.Trim(),
                 Quantity = i.Quantity,
                 Unit = i.Unit,
@@ -112,12 +110,10 @@ public sealed class RecipeStore
         return existing;
     }
 
-    public async Task<bool> DeleteAsync(string id)
+    public async Task<bool> DeleteAsync(Guid id)
     {
         _logger.LogInformation("Deleting recipe {RecipeId}", id);
-        var recipe = await _context.Recipes
-            .Where(r => r.Id == id)
-            .FirstOrDefaultAsync();
+        var recipe = await _context.Recipes.FindAsync(id);
         if (recipe == null)
         {
             _logger.LogWarning("Delete failed: Recipe {RecipeId} not found", id);
@@ -130,26 +126,28 @@ public sealed class RecipeStore
         return true;
     }
 
-    public async Task<IReadOnlyCollection<string>> GetIngredientSuggestionsAsync(string householdId, string query)
+    public async Task<IReadOnlyCollection<string>> GetIngredientSuggestionsAsync(Guid householdId, string query)
     {
         // Get unique ingredient names from user's food items
-        var suggestions = await _context.FoodItems
-            .Where(f => f.HouseholdId == householdId && f.Name.ToLower().Contains(query.ToLower()))
+        var lowerQuery = query.ToLower();
+        var foodItems = await _context.FoodItems
+            .Where(f => f.HouseholdId == householdId && f.Name.ToLower().Contains(lowerQuery))
+            .ToArrayAsync();
+
+        var suggestions = foodItems
             .Select(f => f.Name)
             .Distinct()
             .OrderBy(n => n)
             .Take(10)
-            .ToArrayAsync();
+            .ToList();
 
         return suggestions;
     }
 
-    public async Task UpdatePhotosAsync(string id, List<string> photos)
+    public async Task UpdatePhotosAsync(Guid id, List<string> photos)
     {
         _logger.LogInformation("Updating photos for recipe {RecipeId}", id);
-        var recipe = await _context.Recipes
-            .Where(r => r.Id == id)
-            .FirstOrDefaultAsync();
+        var recipe = await _context.Recipes.FindAsync(id);
         if (recipe == null)
         {
             _logger.LogWarning("Update photos failed: Recipe {RecipeId} not found", id);

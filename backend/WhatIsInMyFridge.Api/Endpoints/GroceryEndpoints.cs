@@ -18,26 +18,26 @@ internal static class GroceryEndpoints
 
         group.MapGet(string.Empty, async Task<IResult> (HttpContext httpContext, GroceryListStore store, ILogger<Program> logger) =>
         {
-            var householdId = httpContext.User.FindFirst("householdId")?.Value;
-            logger.LogInformation("Getting grocery list for household {HouseholdId}", householdId);
+            var householdIdString = httpContext.User.FindFirst("householdId")?.Value;
+            logger.LogInformation("Getting grocery list for household {HouseholdId}", householdIdString);
             
-            if (string.IsNullOrEmpty(householdId))
+            if (string.IsNullOrEmpty(householdIdString) || !Guid.TryParse(householdIdString, out Guid householdId))
             {
                 logger.LogWarning("Unauthorized access to grocery list");
                 return Results.Unauthorized();
             }
 
             var items = await store.GetAllAsync(householdId);
-            logger.LogInformation("Retrieved {ItemCount} grocery items for household {HouseholdId}", items.Count(), householdId);
+            logger.LogInformation("Retrieved {ItemCount} grocery items for household {HouseholdId}", items.Count, householdId);
             return Results.Ok(items);
         });
 
         group.MapPost(string.Empty, async Task<IResult> (CreateGroceryItemRequest request, HttpContext httpContext, GroceryListStore store, ILogger<Program> logger) =>
         {
-            var householdId = httpContext.User.FindFirst("householdId")?.Value;
-            logger.LogInformation("Creating grocery item for household {HouseholdId}: {ItemName}", householdId, request.Name);
+            var householdIdString = httpContext.User.FindFirst("householdId")?.Value;
+            logger.LogInformation("Creating grocery item for household {HouseholdId}: {ItemName}", householdIdString, request.Name);
             
-            if (string.IsNullOrEmpty(householdId))
+            if (string.IsNullOrEmpty(householdIdString) || !Guid.TryParse(householdIdString, out Guid householdId))
             {
                 logger.LogWarning("Unauthorized attempt to create grocery item");
                 return Results.Unauthorized();
@@ -54,12 +54,12 @@ internal static class GroceryEndpoints
             return Results.Created($"/api/grocery/{item.Id}", item);
         });
 
-        group.MapPatch("/{id}", async Task<IResult> (string id, UpdateGroceryItemRequest request, HttpContext httpContext, GroceryListStore store, ILogger<Program> logger) =>
+        group.MapPatch("/{id}", async Task<IResult> (Guid id, UpdateGroceryItemRequest request, HttpContext httpContext, GroceryListStore store, ILogger<Program> logger) =>
         {
-            var householdId = httpContext.User.FindFirst("householdId")?.Value;
-            logger.LogInformation("Updating grocery item {ItemId} for household {HouseholdId}", id, householdId);
+            var householdIdString = httpContext.User.FindFirst("householdId")?.Value;
+            logger.LogInformation("Updating grocery item {ItemId} for household {HouseholdId}", id, householdIdString);
             
-            if (string.IsNullOrEmpty(householdId))
+            if (string.IsNullOrEmpty(householdIdString) || !Guid.TryParse(householdIdString, out Guid householdId))
             {
                 logger.LogWarning("Unauthorized attempt to update grocery item {ItemId}", id);
                 return Results.Unauthorized();
@@ -83,12 +83,12 @@ internal static class GroceryEndpoints
             return updated is null ? Results.NotFound() : Results.Ok(updated);
         });
 
-        group.MapDelete("/{id}", async Task<IResult> (string id, HttpContext httpContext, GroceryListStore store, ILogger<Program> logger) =>
+        group.MapDelete("/{id}", async Task<IResult> (Guid id, HttpContext httpContext, GroceryListStore store, ILogger<Program> logger) =>
         {
-            var householdId = httpContext.User.FindFirst("householdId")?.Value;
-            logger.LogInformation("Deleting grocery item {ItemId} for household {HouseholdId}", id, householdId);
+            var householdIdString = httpContext.User.FindFirst("householdId")?.Value;
+            logger.LogInformation("Deleting grocery item {ItemId} for household {HouseholdId}", id, householdIdString);
             
-            if (string.IsNullOrEmpty(householdId))
+            if (string.IsNullOrEmpty(householdIdString) || !Guid.TryParse(householdIdString, out Guid householdId))
             {
                 logger.LogWarning("Unauthorized attempt to delete grocery item {ItemId}", id);
                 return Results.Unauthorized();
@@ -113,10 +113,10 @@ internal static class GroceryEndpoints
 
         group.MapDelete("/purchased", async Task<IResult> (HttpContext httpContext, GroceryListStore store, ILogger<Program> logger) =>
         {
-            var householdId = httpContext.User.FindFirst("householdId")?.Value;
-            logger.LogInformation("Clearing purchased items for household {HouseholdId}", householdId);
+            var householdIdString = httpContext.User.FindFirst("householdId")?.Value;
+            logger.LogInformation("Clearing purchased items for household {HouseholdId}", householdIdString);
             
-            if (string.IsNullOrEmpty(householdId))
+            if (string.IsNullOrEmpty(householdIdString) || !Guid.TryParse(householdIdString, out Guid householdId))
             {
                 logger.LogWarning("Unauthorized attempt to clear purchased items");
                 return Results.Unauthorized();

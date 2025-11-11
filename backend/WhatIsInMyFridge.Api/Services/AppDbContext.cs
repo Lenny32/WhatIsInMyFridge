@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using System.Text.Json;
 using WhatIsInMyFridge.Api.Models;
 
 namespace WhatIsInMyFridge.Api.Services;
@@ -31,6 +32,12 @@ public sealed class AppDbContext : DbContext
             entity.Property(e => e.Email).IsRequired();
             entity.Property(e => e.Name).IsRequired();
             entity.Property(e => e.PasswordHash).IsRequired();
+            
+            // Value converter for List<Guid> to work with Cosmos DB
+            entity.Property(e => e.HouseholdIds)
+                .HasConversion(
+                    v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
+                    v => JsonSerializer.Deserialize<List<Guid>>(v, (JsonSerializerOptions?)null) ?? new List<Guid>());
         });
 
         modelBuilder.Entity<Household>(entity =>
@@ -40,12 +47,18 @@ public sealed class AppDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Name).IsRequired();
             entity.Property(e => e.OwnerId).IsRequired();
+            
+            // Value converter for List<Guid> to work with Cosmos DB
+            entity.Property(e => e.MemberIds)
+                .HasConversion(
+                    v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
+                    v => JsonSerializer.Deserialize<List<Guid>>(v, (JsonSerializerOptions?)null) ?? new List<Guid>());
         });
 
         modelBuilder.Entity<FoodItem>(entity =>
         {
             entity.ToContainer("FoodItems");
-            entity.HasPartitionKey(e => e.HouseholdId);
+            entity.HasPartitionKey(e => e.Id);
             entity.HasKey(e => e.Id);
             entity.Property(e => e.HouseholdId).IsRequired();
             entity.Property(e => e.Name).IsRequired();
@@ -59,7 +72,7 @@ public sealed class AppDbContext : DbContext
         modelBuilder.Entity<Recipe>(entity =>
         {
             entity.ToContainer("Recipes");
-            entity.HasPartitionKey(e => e.HouseholdId);
+            entity.HasPartitionKey(e => e.Id);
             entity.HasKey(e => e.Id);
             entity.Property(e => e.HouseholdId).IsRequired();
             entity.Property(e => e.Name).IsRequired();
@@ -89,7 +102,7 @@ public sealed class AppDbContext : DbContext
         modelBuilder.Entity<GroceryItem>(entity =>
         {
             entity.ToContainer("GroceryItems");
-            entity.HasPartitionKey(e => e.HouseholdId);
+            entity.HasPartitionKey(e => e.Id);
             entity.HasKey(e => e.Id);
             entity.Property(e => e.HouseholdId).IsRequired();
             entity.Property(e => e.Name).IsRequired();

@@ -31,26 +31,26 @@ internal static class RecipeEndpoints
 
         group.MapGet(string.Empty, async Task<IResult> (HttpContext httpContext, RecipeStore store, ILogger<Program> logger) =>
         {
-            var householdId = httpContext.User.FindFirst("householdId")?.Value;
-            logger.LogInformation("Getting recipes for household {HouseholdId}", householdId);
+            var householdIdString = httpContext.User.FindFirst("householdId")?.Value;
+            logger.LogInformation("Getting recipes for household {HouseholdId}", householdIdString);
             
-            if (string.IsNullOrEmpty(householdId))
+            if (string.IsNullOrEmpty(householdIdString) || !Guid.TryParse(householdIdString, out Guid householdId))
             {
                 logger.LogWarning("Unauthorized access to recipes endpoint");
                 return Results.Unauthorized();
             }
 
             var recipes = await store.GetRecipesAsync(householdId);
-            logger.LogInformation("Retrieved {RecipeCount} recipes for household {HouseholdId}", recipes.Count(), householdId);
+            logger.LogInformation("Retrieved {RecipeCount} recipes for household {HouseholdId}", recipes.Count, householdId);
             return Results.Ok(recipes);
         });
 
-        group.MapGet("/{id}", async Task<IResult> (string id, HttpContext httpContext, RecipeStore store, ILogger<Program> logger) =>
+        group.MapGet("/{id}", async Task<IResult> (Guid id, HttpContext httpContext, RecipeStore store, ILogger<Program> logger) =>
         {
-            var householdId = httpContext.User.FindFirst("householdId")?.Value;
-            logger.LogInformation("Getting recipe {RecipeId} for household {HouseholdId}", id, householdId);
+            var householdIdString = httpContext.User.FindFirst("householdId")?.Value;
+            logger.LogInformation("Getting recipe {RecipeId} for household {HouseholdId}", id, householdIdString);
             
-            if (string.IsNullOrEmpty(householdId))
+            if (string.IsNullOrEmpty(householdIdString) || !Guid.TryParse(householdIdString, out Guid householdId))
             {
                 logger.LogWarning("Unauthorized access to recipe {RecipeId}", id);
                 return Results.Unauthorized();
@@ -68,10 +68,10 @@ internal static class RecipeEndpoints
 
         group.MapPost(string.Empty, async Task<IResult> (CreateRecipeRequest request, HttpContext httpContext, RecipeStore store, ILogger<Program> logger) =>
         {
-            var householdId = httpContext.User.FindFirst("householdId")?.Value;
-            logger.LogInformation("Creating recipe '{RecipeName}' for household {HouseholdId}", request.Name, householdId);
+            var householdIdString = httpContext.User.FindFirst("householdId")?.Value;
+            logger.LogInformation("Creating recipe '{RecipeName}' for household {HouseholdId}", request.Name, householdIdString);
             
-            if (string.IsNullOrEmpty(householdId))
+            if (string.IsNullOrEmpty(householdIdString) || !Guid.TryParse(householdIdString, out Guid householdId))
             {
                 logger.LogWarning("Unauthorized attempt to create recipe");
                 return Results.Unauthorized();
@@ -88,12 +88,12 @@ internal static class RecipeEndpoints
             return Results.Created($"/api/recipes/{recipe.Id}", recipe);
         });
 
-        group.MapPatch("/{id}", async Task<IResult> (string id, UpdateRecipeRequest request, HttpContext httpContext, RecipeStore store, ILogger<Program> logger) =>
+        group.MapPatch("/{id}", async Task<IResult> (Guid id, UpdateRecipeRequest request, HttpContext httpContext, RecipeStore store, ILogger<Program> logger) =>
         {
-            var householdId = httpContext.User.FindFirst("householdId")?.Value;
-            logger.LogInformation("Updating recipe {RecipeId} for household {HouseholdId}", id, householdId);
+            var householdIdString = httpContext.User.FindFirst("householdId")?.Value;
+            logger.LogInformation("Updating recipe {RecipeId} for household {HouseholdId}", id, householdIdString);
             
-            if (string.IsNullOrEmpty(householdId))
+            if (string.IsNullOrEmpty(householdIdString) || !Guid.TryParse(householdIdString, out Guid householdId))
             {
                 logger.LogWarning("Unauthorized attempt to update recipe {RecipeId}", id);
                 return Results.Unauthorized();
@@ -117,12 +117,12 @@ internal static class RecipeEndpoints
             return updated is null ? Results.NotFound() : Results.Ok(updated);
         });
 
-        group.MapDelete("/{id}", async Task<IResult> (string id, HttpContext httpContext, RecipeStore store, ILogger<Program> logger) =>
+        group.MapDelete("/{id}", async Task<IResult> (Guid id, HttpContext httpContext, RecipeStore store, ILogger<Program> logger) =>
         {
-            var householdId = httpContext.User.FindFirst("householdId")?.Value;
-            logger.LogInformation("Deleting recipe {RecipeId} for household {HouseholdId}", id, householdId);
+            var householdIdString = httpContext.User.FindFirst("householdId")?.Value;
+            logger.LogInformation("Deleting recipe {RecipeId} for household {HouseholdId}", id, householdIdString);
             
-            if (string.IsNullOrEmpty(householdId))
+            if (string.IsNullOrEmpty(householdIdString) || !Guid.TryParse(householdIdString, out Guid householdId))
             {
                 logger.LogWarning("Unauthorized attempt to delete recipe {RecipeId}", id);
                 return Results.Unauthorized();
@@ -153,10 +153,10 @@ internal static class RecipeEndpoints
 
         group.MapGet("/suggestions", async Task<IResult> (string? query, HttpContext httpContext, RecipeStore store, ILogger<Program> logger) =>
         {
-            var householdId = httpContext.User.FindFirst("householdId")?.Value;
-            logger.LogInformation("Getting ingredient suggestions for household {HouseholdId}, query: {Query}", householdId, query);
+            var householdIdString = httpContext.User.FindFirst("householdId")?.Value;
+            logger.LogInformation("Getting ingredient suggestions for household {HouseholdId}, query: {Query}", householdIdString, query);
             
-            if (string.IsNullOrEmpty(householdId))
+            if (string.IsNullOrEmpty(householdIdString) || !Guid.TryParse(householdIdString, out Guid householdId))
             {
                 logger.LogWarning("Unauthorized access to ingredient suggestions");
                 return Results.Unauthorized();
@@ -169,7 +169,7 @@ internal static class RecipeEndpoints
             }
 
             var suggestions = await store.GetIngredientSuggestionsAsync(householdId, query);
-            logger.LogInformation("Retrieved {SuggestionCount} ingredient suggestions for household {HouseholdId}", suggestions.Count(), householdId);
+            logger.LogInformation("Retrieved {SuggestionCount} ingredient suggestions for household {HouseholdId}", suggestions.Count, householdId);
             return Results.Ok(suggestions);
         });
     }
@@ -179,12 +179,12 @@ internal static class RecipeEndpoints
         var group = endpoints.MapGroup("/api/recipes");
         group.RequireAuthorization();
 
-        group.MapPost("/{id}/photos", async Task<IResult> (string id, IFormFile file, HttpContext httpContext, RecipeStore store, BlobStorageService blobStorage, ILogger<Program> logger) =>
+        group.MapPost("/{id}/photos", async Task<IResult> (Guid id, IFormFile file, HttpContext httpContext, RecipeStore store, BlobStorageService blobStorage, ILogger<Program> logger) =>
         {
-            var householdId = httpContext.User.FindFirst("householdId")?.Value;
-            logger.LogInformation("Uploading photo for recipe {RecipeId}, household {HouseholdId}", id, householdId);
+            var householdIdString = httpContext.User.FindFirst("householdId")?.Value;
+            logger.LogInformation("Uploading photo for recipe {RecipeId}, household {HouseholdId}", id, householdIdString);
             
-            if (string.IsNullOrEmpty(householdId))
+            if (string.IsNullOrEmpty(householdIdString) || !Guid.TryParse(householdIdString, out Guid householdId))
             {
                 logger.LogWarning("Unauthorized attempt to upload photo for recipe {RecipeId}", id);
                 return Results.Unauthorized();
@@ -240,12 +240,12 @@ internal static class RecipeEndpoints
             return Results.Ok(new { photoId, url = $"/api/photos/{photoId}{extension}" });
         }).DisableAntiforgery();
 
-        group.MapDelete("/{id}/photos/{photoId}", async Task<IResult> (string id, string photoId, HttpContext httpContext, RecipeStore store, BlobStorageService blobStorage, ILogger<Program> logger) =>
+        group.MapDelete("/{id}/photos/{photoId}", async Task<IResult> (Guid id, string photoId, HttpContext httpContext, RecipeStore store, BlobStorageService blobStorage, ILogger<Program> logger) =>
         {
-            var householdId = httpContext.User.FindFirst("householdId")?.Value;
-            logger.LogInformation("Deleting photo {PhotoId} from recipe {RecipeId}, household {HouseholdId}", photoId, id, householdId);
+            var householdIdString = httpContext.User.FindFirst("householdId")?.Value;
+            logger.LogInformation("Deleting photo {PhotoId} from recipe {RecipeId}, household {HouseholdId}", photoId, id, householdIdString);
             
-            if (string.IsNullOrEmpty(householdId))
+            if (string.IsNullOrEmpty(householdIdString) || !Guid.TryParse(householdIdString, out Guid householdId))
             {
                 logger.LogWarning("Unauthorized attempt to delete photo {PhotoId} from recipe {RecipeId}", photoId, id);
                 return Results.Unauthorized();

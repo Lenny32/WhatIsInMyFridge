@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging;
 using WhatIsInMyFridge.Api.Dtos;
 using WhatIsInMyFridge.Api.Infrastructure;
 using WhatIsInMyFridge.Api.Services;
+using WhatIsInMyFridge.Api.Models;
 
 namespace WhatIsInMyFridge.Api.Endpoints;
 
@@ -34,7 +35,7 @@ internal static class AuthEndpoints
                 return Results.BadRequest(new { error = "User with this email already exists" });
             }
 
-            var token = jwtTokenService.GenerateToken(result.Value.user.Id, result.Value.household.Id);
+            var token = jwtTokenService.GenerateToken(result.Value.user.Id, result.Value.household.Id, result.Value.user.IsAdmin);
             
             logger.LogInformation("User {UserId} successfully registered with household {HouseholdId}", result.Value.user.Id, result.Value.household.Id);
 
@@ -70,14 +71,14 @@ internal static class AuthEndpoints
                 return Results.Unauthorized();
             }
 
-            var householdId = user.CurrentHouseholdId ?? user.HouseholdIds.FirstOrDefault();
-            if (string.IsNullOrEmpty(householdId))
+            var householdId = user.CurrentHouseholdId ?? (user.HouseholdIds.Count > 0 ? user.HouseholdIds.FirstOrDefault() : (Guid?)null);
+            if (householdId == null)
             {
                 logger.LogWarning("User {UserId} has no household", user.Id);
                 return Results.BadRequest(new { error = "User is not part of any household" });
             }
 
-            var token = jwtTokenService.GenerateToken(user.Id, householdId);
+            var token = jwtTokenService.GenerateToken(user.Id, householdId.Value, user.IsAdmin);
             
             logger.LogInformation("User {UserId} successfully logged in to household {HouseholdId}", user.Id, householdId);
 
@@ -113,17 +114,27 @@ internal static class AuthEndpoints
                 return Results.Unauthorized();
             }
 
-            var user = await userStore.GetByIdAsync(userId);
+            // Parse userId as Guid
+            if (!Guid.TryParse(userId, out var userGuid))
+            {
+                logger.LogWarning("Invalid user ID format: {UserId}", userId);
+                return Results.BadRequest("Invalid user ID format");
+            }
+
+            var user = await userStore.GetByIdAsync(userGuid);
             if (user == null)
             {
                 logger.LogWarning("User {UserId} not found in database", userId);
                 return Results.Unauthorized();
             }
 
-            var householdId = httpContext.User.FindFirst("householdId")?.Value;
-            var household = !string.IsNullOrEmpty(householdId)
-                ? await householdStore.GetByIdAsync(householdId)
-                : null;
+            var householdIdClaim = httpContext.User.FindFirst("householdId")?.Value;
+            Household? household = null;
+            
+            if (!string.IsNullOrEmpty(householdIdClaim) && Guid.TryParse(householdIdClaim, out var householdGuid))
+            {
+                household = await householdStore.GetByIdAsync(householdGuid);
+            }
 
             return Results.Ok(new
             {
