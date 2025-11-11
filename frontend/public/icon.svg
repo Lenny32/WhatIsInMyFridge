@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <!-- Background gradient -->
+  <defs>
+    <linearGradient id="fridgeGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#4CAF50;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#2E7D32;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Rounded rectangle background -->
+  <rect width="512" height="512" rx="110" fill="url(#fridgeGradient)"/>
+  
+  <!-- Fridge body -->
+  <rect x="140" y="90" width="232" height="332" rx="16" fill="#ffffff"/>
+  
+  <!-- Fridge top section (freezer) -->
+  <rect x="140" y="90" width="232" height="120" rx="16" fill="#f5f5f5"/>
+  <rect x="140" y="194" width="232" height="16" fill="#f5f5f5"/>
+  
+  <!-- Fridge handles -->
+  <rect x="330" y="130" width="12" height="50" rx="6" fill="#e0e0e0"/>
+  <rect x="330" y="250" width="12" height="80" rx="6" fill="#e0e0e0"/>
+  
+  <!-- Food items inside (simplified) -->
+  <!-- Apple -->
+  <circle cx="200" cy="300" r="20" fill="#FF5252"/>
+  <ellipse cx="198" cy="295" rx="6" ry="8" fill="#FF8A80" opacity="0.5"/>
+  
+  <!-- Carrot -->
+  <path d="M 280 290 L 290 290 L 285 320 L 280 318 Z" fill="#FF9800"/>
+  <path d="M 285 288 L 283 282 L 287 282 Z" fill="#4CAF50"/>
+  
+  <!-- Milk carton -->
+  <rect x="235" y="280" width="30" height="45" rx="2" fill="#2196F3"/>
+  <rect x="235" y="280" width="30" height="10" fill="#1976D2"/>
+  
+  <!-- Lettuce/Greens -->
+  <circle cx="180" cy="360" r="18" fill="#8BC34A"/>
+  <circle cx="190" cy="355" r="14" fill="#9CCC65"/>
+  
+  <!-- Cheese -->
+  <rect x="250" y="350" width="35" height="25" rx="3" fill="#FFC107"/>
+  <circle cx="260" cy="360" r="3" fill="#FFD54F"/>
+  <circle cx="275" cy="365" r="2.5" fill="#FFD54F"/>
+</svg>
