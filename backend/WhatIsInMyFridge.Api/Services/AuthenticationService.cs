@@ -22,7 +22,7 @@ public sealed class AuthenticationService
         _logger = logger;
     }
 
-    public async Task<User?> AuthenticateAsync(string email, string password, CancellationToken cancellationToken = default)
+    public async Task<User?> AuthenticateAsync(string email, string password, CancellationToken cancellationToken)
     {
         _logger.LogInformation("Attempting authentication for user {Email}", email);
         
@@ -43,7 +43,7 @@ public sealed class AuthenticationService
         return user;
     }
 
-    public async Task<(User user, Household household)?> RegisterAsync(string email, string password, string name, string householdName, CancellationToken cancellationToken = default)
+    public async Task<(User user, Household household)?> RegisterAsync(string email, string password, string name, string householdName, CancellationToken cancellationToken)
     {
         _logger.LogInformation("Starting registration for user {Email} with household {HouseholdName}", email, householdName);
         

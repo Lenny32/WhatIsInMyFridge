@@ -71,7 +71,7 @@ public sealed class BlobStorageService
         _logger.LogInformation("BlobStorageService initialized. Using blob storage: {UseBlobStorage}", _useBlobStorage);
     }
 
-    public async Task<string> UploadPhotoAsync(Stream photoStream, string fileName, string contentType, CancellationToken cancellationToken = default)
+    public async Task<string> UploadPhotoAsync(Stream photoStream, string fileName, string contentType, CancellationToken cancellationToken)
     {
         _logger.LogInformation("Uploading photo {FileName} with content type {ContentType}", fileName, contentType);
         
@@ -99,7 +99,7 @@ public sealed class BlobStorageService
             return $"/api/photos/{fileName}";
         }
     }
-    public async Task DeletePhotoAsync(string photoId, CancellationToken cancellationToken = default)
+    public async Task DeletePhotoAsync(string photoId, CancellationToken cancellationToken)
     {
         _logger.LogInformation("Deleting photo {PhotoId}", photoId);
         
@@ -132,7 +132,7 @@ public sealed class BlobStorageService
         }
     }
 
-    public async Task<(byte[] fileBytes, string contentType)?> GetPhotoAsync(string fileName, CancellationToken cancellationToken = default)
+    public async Task<(byte[] fileBytes, string contentType)?> GetPhotoAsync(string fileName, CancellationToken cancellationToken)
     {
         _logger.LogDebug("Retrieving photo {FileName}", fileName);
         

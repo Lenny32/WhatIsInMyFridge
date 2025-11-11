@@ -16,7 +16,7 @@ public sealed class GroceryListStore
         _logger = logger;
     }
 
-    public async Task<IReadOnlyCollection<GroceryItem>> GetAllAsync(Guid householdId, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyCollection<GroceryItem>> GetAllAsync(Guid householdId, CancellationToken cancellationToken)
     {
         _logger.LogDebug("Retrieving grocery items for household {HouseholdId}", householdId);
         var items = await _context.GroceryItems
@@ -30,12 +30,12 @@ public sealed class GroceryListStore
             .ToArray();
     }
 
-    public async Task<GroceryItem?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<GroceryItem?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
     {
         return await _context.GroceryItems.FindAsync(new object[] { id }, cancellationToken);
     }
 
-    public async Task<GroceryItem> CreateAsync(Guid householdId, CreateGroceryItemRequest request, CancellationToken cancellationToken = default)
+    public async Task<GroceryItem> CreateAsync(Guid householdId, CreateGroceryItemRequest request, CancellationToken cancellationToken)
     {
         _logger.LogInformation("Creating grocery item {Name} for household {HouseholdId}", request.Name, householdId);
         var now = DateTimeOffset.UtcNow;
@@ -57,7 +57,7 @@ public sealed class GroceryListStore
         return item;
     }
 
-    public async Task<GroceryItem?> UpdateAsync(Guid id, UpdateGroceryItemRequest request, CancellationToken cancellationToken = default)
+    public async Task<GroceryItem?> UpdateAsync(Guid id, UpdateGroceryItemRequest request, CancellationToken cancellationToken)
     {
         _logger.LogInformation("Updating grocery item {ItemId}", id);
         var existing = await _context.GroceryItems.FindAsync(new object[] { id }, cancellationToken);
@@ -79,7 +79,7 @@ public sealed class GroceryListStore
         return existing;
     }
 
-    public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken)
     {
         _logger.LogInformation("Deleting grocery item {ItemId}", id);
         var item = await _context.GroceryItems.FindAsync(new object[] { id }, cancellationToken);
@@ -95,7 +95,7 @@ public sealed class GroceryListStore
         return true;
     }
 
-    public async Task<int> ClearPurchasedAsync(Guid householdId, CancellationToken cancellationToken = default)
+    public async Task<int> ClearPurchasedAsync(Guid householdId, CancellationToken cancellationToken)
     {
         _logger.LogInformation("Clearing purchased items for household {HouseholdId}", householdId);
         var purchasedItems = await _context.GroceryItems

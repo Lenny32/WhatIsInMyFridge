@@ -15,18 +15,18 @@ public sealed class UserStore
         _logger = logger;
     }
 
-    public async Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
     {
         return await _context.Users.FindAsync(new object[] { id }, cancellationToken);
     }
 
-    public async Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default)
+    public async Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken)
     {
         return await _context.Users
             .FirstOrDefaultAsync(u => u.Email.ToLower() == email.ToLower(), cancellationToken);
     }
 
-    public async Task<User> CreateAsync(User user, CancellationToken cancellationToken = default)
+    public async Task<User> CreateAsync(User user, CancellationToken cancellationToken)
     {
         _logger.LogInformation("Creating user {UserId} with email {Email}", user.Id, user.Email);
         _context.Users.Add(user);
@@ -35,7 +35,7 @@ public sealed class UserStore
         return user;
     }
 
-    public async Task<User?> UpdateAsync(User user, CancellationToken cancellationToken = default)
+    public async Task<User?> UpdateAsync(User user, CancellationToken cancellationToken)
     {
         _logger.LogInformation("Updating user {UserId}", user.Id);
         var existing = await _context.Users
@@ -59,7 +59,7 @@ public sealed class UserStore
         return user;
     }
     
-    public async Task<List<User>> GetAllUsersAsync(CancellationToken cancellationToken = default)
+    public async Task<List<User>> GetAllUsersAsync(CancellationToken cancellationToken)
     {
         _logger.LogDebug("Retrieving all users");
         var users = await _context.Users

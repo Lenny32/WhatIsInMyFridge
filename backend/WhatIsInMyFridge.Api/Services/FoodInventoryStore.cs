@@ -31,7 +31,7 @@ public sealed class FoodInventoryStore
         return items;
     }
 
-    public async Task<IReadOnlyCollection<FoodItem>> GetToBuyListAsync(Guid householdId, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyCollection<FoodItem>> GetToBuyListAsync(Guid householdId, CancellationToken cancellationToken)
     {
         _logger.LogDebug("Retrieving to-buy list for household {HouseholdId}", householdId);
         
@@ -49,12 +49,12 @@ public sealed class FoodInventoryStore
         return items;
     }
 
-    public async Task<FoodItem?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<FoodItem?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
     {
         return await _context.FoodItems.FindAsync(new object[] { id }, cancellationToken);
     }
 
-    public async Task<FoodItem> CreateAsync(Guid householdId, CreateFoodItemRequest request, CancellationToken cancellationToken = default)
+    public async Task<FoodItem> CreateAsync(Guid householdId, CreateFoodItemRequest request, CancellationToken cancellationToken)
     {
         _logger.LogInformation("Creating food item {Name} for household {HouseholdId}", request.Name, householdId);
         var now = DateTimeOffset.UtcNow;
@@ -79,7 +79,7 @@ public sealed class FoodInventoryStore
         return item;
     }
 
-    public async Task<FoodItem?> UpdateAsync(Guid id, UpdateFoodItemRequest request, CancellationToken cancellationToken = default)
+    public async Task<FoodItem?> UpdateAsync(Guid id, UpdateFoodItemRequest request, CancellationToken cancellationToken)
     {
         _logger.LogInformation("Updating food item {ItemId}", id);
         var existing = await _context.FoodItems.FindAsync(new object[] { id }, cancellationToken);
@@ -104,7 +104,7 @@ public sealed class FoodInventoryStore
         return existing;
     }
 
-    public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken)
     {
         _logger.LogInformation("Deleting food item {ItemId}", id);
         var item = await _context.FoodItems.FindAsync(new object[] { id }, cancellationToken);

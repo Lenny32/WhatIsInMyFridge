@@ -15,12 +15,12 @@ public sealed class HouseholdStore
         _logger = logger;
     }
 
-    public async Task<Household?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<Household?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
     {
         return await _context.Households.FindAsync(new object[] { id }, cancellationToken);
     }
 
-    public async Task<IReadOnlyCollection<Household>> GetByUserIdAsync(Guid userId, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyCollection<Household>> GetByUserIdAsync(Guid userId, CancellationToken cancellationToken)
     {
         // Alternative approach: Use User.HouseholdIds to avoid ARRAY_CONTAINS query on Household.MemberIds
         // This bypasses the Cosmos DB emulator indexing issue with array operations
@@ -44,7 +44,7 @@ public sealed class HouseholdStore
         return households.AsReadOnly();
     }
 
-    public async Task<Household> CreateAsync(Household household, CancellationToken cancellationToken = default)
+    public async Task<Household> CreateAsync(Household household, CancellationToken cancellationToken)
     {
         _logger.LogInformation("Creating household {HouseholdId} with name {Name}", household.Id, household.Name);
         _context.Households.Add(household);
@@ -53,7 +53,7 @@ public sealed class HouseholdStore
         return household;
     }
 
-    public async Task<Household?> UpdateAsync(Household household, CancellationToken cancellationToken = default)
+    public async Task<Household?> UpdateAsync(Household household, CancellationToken cancellationToken)
     {
         _logger.LogInformation("Updating household {HouseholdId}", household.Id);
         var existing = await _context.Households.FindAsync(new object[] { household.Id }, cancellationToken);
@@ -74,7 +74,7 @@ public sealed class HouseholdStore
         return existing;
     }
 
-    public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken)
     {
         _logger.LogInformation("Deleting household {HouseholdId}", id);
         var household = await _context.Households.FindAsync(new object[] { id }, cancellationToken);

@@ -16,7 +16,7 @@ public sealed class RecipeStore
         _logger = logger;
     }
 
-    public async Task<IReadOnlyCollection<Recipe>> GetRecipesAsync(Guid householdId, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyCollection<Recipe>> GetRecipesAsync(Guid householdId, CancellationToken cancellationToken)
     {
         _logger.LogDebug("Retrieving recipes for household {HouseholdId}", householdId);
         var recipes = await _context.Recipes
@@ -28,14 +28,14 @@ public sealed class RecipeStore
         return recipes.OrderByDescending(r => r.CreatedAt).ToArray();
     }
 
-    public async Task<Recipe?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<Recipe?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
     {
         return await _context.Recipes
             .Include(r => r.Ingredients)
             .FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
     }
 
-    public async Task<Recipe> CreateAsync(Guid householdId, CreateRecipeRequest request, CancellationToken cancellationToken = default)
+    public async Task<Recipe> CreateAsync(Guid householdId, CreateRecipeRequest request, CancellationToken cancellationToken)
     {
         _logger.LogInformation("Creating recipe {Name} for household {HouseholdId}", request.Name, householdId);
         var now = DateTimeOffset.UtcNow;
@@ -66,7 +66,7 @@ public sealed class RecipeStore
         return recipe;
     }
 
-    public async Task<Recipe?> UpdateAsync(Guid id, UpdateRecipeRequest request, CancellationToken cancellationToken = default)
+    public async Task<Recipe?> UpdateAsync(Guid id, UpdateRecipeRequest request, CancellationToken cancellationToken)
     {
         _logger.LogInformation("Updating recipe {RecipeId}", id);
         var existing = await _context.Recipes
@@ -110,7 +110,7 @@ public sealed class RecipeStore
         return existing;
     }
 
-    public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken)
     {
         _logger.LogInformation("Deleting recipe {RecipeId}", id);
         var recipe = await _context.Recipes.FindAsync(new object[] { id }, cancellationToken);
@@ -126,7 +126,7 @@ public sealed class RecipeStore
         return true;
     }
 
-    public async Task<IReadOnlyCollection<string>> GetIngredientSuggestionsAsync(Guid householdId, string query, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyCollection<string>> GetIngredientSuggestionsAsync(Guid householdId, string query, CancellationToken cancellationToken)
     {
         // Get unique ingredient names from user's food items
         var lowerQuery = query.ToLower();
@@ -144,7 +144,7 @@ public sealed class RecipeStore
         return suggestions;
     }
 
-    public async Task UpdatePhotosAsync(Guid id, List<RecipePhoto> photos, CancellationToken cancellationToken = default)
+    public async Task UpdatePhotosAsync(Guid id, List<RecipePhoto> photos, CancellationToken cancellationToken)
     {
         _logger.LogInformation("Updating photos for recipe {RecipeId}", id);
         var recipe = await _context.Recipes.FindAsync(new object[] { id }, cancellationToken);
