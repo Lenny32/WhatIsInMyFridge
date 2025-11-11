@@ -48,6 +48,10 @@ internal static class WebApplicationBuilderExtensions
                     new CosmosClientOptions
                     {
                         ConnectionMode = ConnectionMode.Gateway,
+                        SerializerOptions = new CosmosSerializationOptions
+                        {
+                            PropertyNamingPolicy = CosmosPropertyNamingPolicy.CamelCase
+                        }
                     });
             });
 

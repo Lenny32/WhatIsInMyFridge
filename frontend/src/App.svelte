@@ -11,8 +11,13 @@
 
   let authView: "login" | "register" = "login";
   let currentView: "inventory" | "recipes" | "grocery" | "admin" = "inventory";
+  let isPWA = false;
 
   onMount(async () => {
+    // Check if app is running as PWA
+    isPWA = window.matchMedia('(display-mode: standalone)').matches || 
+            (window.navigator as any).standalone === true;
+
     const token = localStorage.getItem("auth_token");
     if (!token) {
       console.log("No token found in localStorage");
@@ -67,9 +72,11 @@
           <div class="household-badge">{householdName}</div>
         </div>
       </div>
-      <button type="button" class="logout-btn" on:click={handleLogout}>
-        Sign Out
-      </button>
+      {#if !isPWA}
+        <button type="button" class="logout-btn" on:click={handleLogout}>
+          Sign Out
+        </button>
+      {/if}
     </header>
 
     <nav class="main-nav">

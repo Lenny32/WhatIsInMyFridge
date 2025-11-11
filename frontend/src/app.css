@@ -1,5 +1,5 @@
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
   font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   
   /* Light theme colors */
@@ -36,9 +36,9 @@
   color: var(--text-primary);
 }
 
-@media (prefers-color-scheme: dark) {
+/* Dark mode disabled - uncomment to enable */
+/* @media (prefers-color-scheme: dark) {
   :root {
-    /* Dark theme colors */
     --bg-primary: #0e1216;
     --bg-secondary: #141a20;
     --bg-tertiary: #1a2028;
@@ -71,7 +71,7 @@
     background-color: var(--bg-primary);
     color: var(--text-primary);
   }
-}
+} */
 
 body {
   margin: 0;
