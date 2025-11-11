@@ -18,7 +18,7 @@ internal static class AuthEndpoints
     {
         var group = endpoints.MapGroup("/api/auth");
 
-        group.MapPost("/register", async Task<IResult> (RegisterRequest request, AuthenticationService authService, JwtTokenService jwtTokenService, ILogger<Program> logger) =>
+        group.MapPost("/register", async Task<IResult> (RegisterRequest request, AuthenticationService authService, JwtTokenService jwtTokenService, ILogger<Program> logger, CancellationToken cancellationToken) =>
         {
             logger.LogInformation("User registration attempt for email: {Email}", request.Email);
             
@@ -28,7 +28,7 @@ internal static class AuthEndpoints
                 return Results.ValidationProblem(errors);
             }
 
-            var result = await authService.RegisterAsync(request.Email, request.Password, request.Name, request.HouseholdName);
+            var result = await authService.RegisterAsync(request.Email, request.Password, request.Name, request.HouseholdName, cancellationToken);
             if (result == null)
             {
                 logger.LogWarning("Registration failed - User with email {Email} already exists", request.Email);
@@ -54,7 +54,7 @@ internal static class AuthEndpoints
             });
         });
 
-        group.MapPost("/login", async Task<IResult> (LoginRequest request, AuthenticationService authService, JwtTokenService jwtTokenService, ILogger<Program> logger) =>
+        group.MapPost("/login", async Task<IResult> (LoginRequest request, AuthenticationService authService, JwtTokenService jwtTokenService, ILogger<Program> logger, CancellationToken cancellationToken) =>
         {
             logger.LogInformation("Login attempt for email: {Email}", request.Email);
             
@@ -64,7 +64,7 @@ internal static class AuthEndpoints
                 return Results.ValidationProblem(errors);
             }
 
-            var user = await authService.AuthenticateAsync(request.Email, request.Password);
+            var user = await authService.AuthenticateAsync(request.Email, request.Password, cancellationToken);
             if (user == null)
             {
                 logger.LogWarning("Failed login attempt for email: {Email}", request.Email);
@@ -103,7 +103,7 @@ internal static class AuthEndpoints
             return Results.NoContent();
         });
 
-        group.MapGet("/me", async Task<IResult> (HttpContext httpContext, UserStore userStore, HouseholdStore householdStore, ILogger<Program> logger) =>
+        group.MapGet("/me", async Task<IResult> (HttpContext httpContext, UserStore userStore, HouseholdStore householdStore, ILogger<Program> logger, CancellationToken cancellationToken) =>
         {
             var userId = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             logger.LogInformation("Getting current user info for user: {UserId}", userId);
@@ -121,7 +121,7 @@ internal static class AuthEndpoints
                 return Results.BadRequest("Invalid user ID format");
             }
 
-            var user = await userStore.GetByIdAsync(userGuid);
+            var user = await userStore.GetByIdAsync(userGuid, cancellationToken);
             if (user == null)
             {
                 logger.LogWarning("User {UserId} not found in database", userId);
@@ -133,7 +133,7 @@ internal static class AuthEndpoints
             
             if (!string.IsNullOrEmpty(householdIdClaim) && Guid.TryParse(householdIdClaim, out var householdGuid))
             {
-                household = await householdStore.GetByIdAsync(householdGuid);
+                household = await householdStore.GetByIdAsync(householdGuid, cancellationToken);
             }
 
             return Results.Ok(new

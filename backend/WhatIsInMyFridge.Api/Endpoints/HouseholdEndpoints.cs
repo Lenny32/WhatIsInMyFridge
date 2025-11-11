@@ -20,7 +20,7 @@ internal static class HouseholdEndpoints
         var group = endpoints.MapGroup("/api/households");
         group.RequireAuthorization();
 
-        group.MapGet(string.Empty, async Task<IResult> (HttpContext httpContext, HouseholdStore householdStore, ILogger<Program> logger) =>
+        group.MapGet(string.Empty, async Task<IResult> (HttpContext httpContext, HouseholdStore householdStore, ILogger<Program> logger, CancellationToken cancellationToken) =>
         {
             var userIdString = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             logger.LogInformation("Getting households for user {UserId}", userIdString);
@@ -31,12 +31,12 @@ internal static class HouseholdEndpoints
                 return Results.Unauthorized();
             }
 
-            var households = await householdStore.GetByUserIdAsync(userId);
+            var households = await householdStore.GetByUserIdAsync(userId, cancellationToken);
             logger.LogInformation("Retrieved {HouseholdCount} households for user {UserId}", households.Count, userId);
             return Results.Ok(households);
         });
 
-        group.MapPost(string.Empty, async Task<IResult> (CreateHouseholdRequest request, HttpContext httpContext, HouseholdStore householdStore, UserStore userStore, ILogger<Program> logger) =>
+        group.MapPost(string.Empty, async Task<IResult> (CreateHouseholdRequest request, HttpContext httpContext, HouseholdStore householdStore, UserStore userStore, ILogger<Program> logger, CancellationToken cancellationToken) =>
         {
             var userIdString = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             logger.LogInformation("Creating household '{HouseholdName}' for user {UserId}", request.Name, userIdString);
@@ -53,7 +53,7 @@ internal static class HouseholdEndpoints
                 return Results.ValidationProblem(errors);
             }
 
-            var user = await userStore.GetByIdAsync(userId);
+            var user = await userStore.GetByIdAsync(userId, cancellationToken);
             if (user == null)
             {
                 logger.LogWarning("User {UserId} not found during household creation", userId);
@@ -67,17 +67,17 @@ internal static class HouseholdEndpoints
                 MemberIds = new List<Guid> { userId }
             };
 
-            await householdStore.CreateAsync(household);
+            await householdStore.CreateAsync(household, cancellationToken);
 
             user.HouseholdIds.Add(household.Id);
-            await userStore.UpdateAsync(user);
+            await userStore.UpdateAsync(user, cancellationToken);
             
             logger.LogInformation("Created household {HouseholdId} for user {UserId}", household.Id, userId);
 
             return Results.Created($"/api/households/{household.Id}", household);
         });
 
-        group.MapPost("/{householdId}/switch", async Task<IResult> (Guid householdId, HttpContext httpContext, HouseholdStore householdStore, UserStore userStore, JwtTokenService jwtTokenService, ILogger<Program> logger) =>
+        group.MapPost("/{householdId}/switch", async Task<IResult> (Guid householdId, HttpContext httpContext, HouseholdStore householdStore, UserStore userStore, JwtTokenService jwtTokenService, ILogger<Program> logger, CancellationToken cancellationToken) =>
         {
             var userIdString = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             logger.LogInformation("User {UserId} switching to household {HouseholdId}", userIdString, householdId);
@@ -88,14 +88,14 @@ internal static class HouseholdEndpoints
                 return Results.Unauthorized();
             }
 
-            var household = await householdStore.GetByIdAsync(householdId);
+            var household = await householdStore.GetByIdAsync(householdId, cancellationToken);
             if (household == null || !household.MemberIds.Contains(userId))
             {
                 logger.LogWarning("User {UserId} attempted to switch to invalid or unauthorized household {HouseholdId}", userId, householdId);
                 return Results.NotFound();
             }
 
-            var user = await userStore.GetByIdAsync(userId);
+            var user = await userStore.GetByIdAsync(userId, cancellationToken);
             if (user == null)
             {
                 logger.LogWarning("User {UserId} not found during household switch", userId);
@@ -103,7 +103,7 @@ internal static class HouseholdEndpoints
             }
 
             user.CurrentHouseholdId = householdId;
-            await userStore.UpdateAsync(user);
+            await userStore.UpdateAsync(user, cancellationToken);
 
             var token = jwtTokenService.GenerateToken(userId, householdId, user.IsAdmin);
             
@@ -112,7 +112,7 @@ internal static class HouseholdEndpoints
             return Results.Ok(new { token, household });
         });
 
-        group.MapPost("/{householdId}/members", async Task<IResult> (Guid householdId, AddHouseholdMemberRequest request, HttpContext httpContext, HouseholdStore householdStore, UserStore userStore, ILogger<Program> logger) =>
+        group.MapPost("/{householdId}/members", async Task<IResult> (Guid householdId, AddHouseholdMemberRequest request, HttpContext httpContext, HouseholdStore householdStore, UserStore userStore, ILogger<Program> logger, CancellationToken cancellationToken) =>
         {
             var userIdString = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             logger.LogInformation("Adding member {Email} to household {HouseholdId} by user {UserId}", request.Email, householdId, userIdString);
@@ -129,7 +129,7 @@ internal static class HouseholdEndpoints
                 return Results.ValidationProblem(errors);
             }
 
-            var household = await householdStore.GetByIdAsync(householdId);
+            var household = await householdStore.GetByIdAsync(householdId, cancellationToken);
             if (household == null)
             {
                 logger.LogWarning("Household {HouseholdId} not found", householdId);
@@ -142,7 +142,7 @@ internal static class HouseholdEndpoints
                 return Results.Forbid();
             }
 
-            var newMember = await userStore.GetByEmailAsync(request.Email);
+            var newMember = await userStore.GetByEmailAsync(request.Email, cancellationToken);
             if (newMember == null)
             {
                 logger.LogWarning("User with email {Email} does not exist", request.Email);
@@ -156,17 +156,17 @@ internal static class HouseholdEndpoints
             }
 
             household.MemberIds.Add(newMember.Id);
-            await householdStore.UpdateAsync(household);
+            await householdStore.UpdateAsync(household, cancellationToken);
 
             newMember.HouseholdIds.Add(household.Id);
-            await userStore.UpdateAsync(newMember);
+            await userStore.UpdateAsync(newMember, cancellationToken);
             
             logger.LogInformation("Successfully added member {MemberId} to household {HouseholdId}", newMember.Id, householdId);
 
             return Results.Ok(household);
         });
 
-        group.MapDelete("/{householdId}/members/{memberId}", async Task<IResult> (Guid householdId, Guid memberId, HttpContext httpContext, HouseholdStore householdStore, UserStore userStore, ILogger<Program> logger) =>
+        group.MapDelete("/{householdId}/members/{memberId}", async Task<IResult> (Guid householdId, Guid memberId, HttpContext httpContext, HouseholdStore householdStore, UserStore userStore, ILogger<Program> logger, CancellationToken cancellationToken) =>
         {
             var userIdString = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             logger.LogInformation("Removing member {MemberId} from household {HouseholdId} by user {UserId}", memberId, householdId, userIdString);
@@ -177,7 +177,7 @@ internal static class HouseholdEndpoints
                 return Results.Unauthorized();
             }
 
-            var household = await householdStore.GetByIdAsync(householdId);
+            var household = await householdStore.GetByIdAsync(householdId, cancellationToken);
             if (household == null)
             {
                 logger.LogWarning("Household {HouseholdId} not found", householdId);
@@ -203,9 +203,9 @@ internal static class HouseholdEndpoints
             }
 
             household.MemberIds.Remove(memberId);
-            await householdStore.UpdateAsync(household);
+            await householdStore.UpdateAsync(household, cancellationToken);
 
-            var member = await userStore.GetByIdAsync(memberId);
+            var member = await userStore.GetByIdAsync(memberId, cancellationToken);
             if (member != null)
             {
                 member.HouseholdIds.Remove(household.Id);
@@ -214,7 +214,7 @@ internal static class HouseholdEndpoints
                     member.CurrentHouseholdId = member.HouseholdIds.Count > 0 ? member.HouseholdIds.FirstOrDefault() : null;
                 }
 
-                await userStore.UpdateAsync(member);
+                await userStore.UpdateAsync(member, cancellationToken);
             }
             
             logger.LogInformation("Successfully removed member {MemberId} from household {HouseholdId}", memberId, householdId);

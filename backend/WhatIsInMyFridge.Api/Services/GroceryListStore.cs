@@ -16,12 +16,12 @@ public sealed class GroceryListStore
         _logger = logger;
     }
 
-    public async Task<IReadOnlyCollection<GroceryItem>> GetAllAsync(Guid householdId)
+    public async Task<IReadOnlyCollection<GroceryItem>> GetAllAsync(Guid householdId, CancellationToken cancellationToken = default)
     {
         _logger.LogDebug("Retrieving grocery items for household {HouseholdId}", householdId);
         var items = await _context.GroceryItems
             .Where(item => item.HouseholdId == householdId)
-            .ToArrayAsync();
+            .ToArrayAsync(cancellationToken);
         
         _logger.LogDebug("Retrieved {Count} grocery items for household {HouseholdId}", items.Length, householdId);
         return items
@@ -30,12 +30,12 @@ public sealed class GroceryListStore
             .ToArray();
     }
 
-    public async Task<GroceryItem?> GetByIdAsync(Guid id)
+    public async Task<GroceryItem?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        return await _context.GroceryItems.FindAsync(id);
+        return await _context.GroceryItems.FindAsync(new object[] { id }, cancellationToken);
     }
 
-    public async Task<GroceryItem> CreateAsync(Guid householdId, CreateGroceryItemRequest request)
+    public async Task<GroceryItem> CreateAsync(Guid householdId, CreateGroceryItemRequest request, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Creating grocery item {Name} for household {HouseholdId}", request.Name, householdId);
         var now = DateTimeOffset.UtcNow;
@@ -52,15 +52,15 @@ public sealed class GroceryListStore
         };
 
         _context.GroceryItems.Add(item);
-        await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync(cancellationToken);
         _logger.LogInformation("Grocery item {ItemId} created successfully", item.Id);
         return item;
     }
 
-    public async Task<GroceryItem?> UpdateAsync(Guid id, UpdateGroceryItemRequest request)
+    public async Task<GroceryItem?> UpdateAsync(Guid id, UpdateGroceryItemRequest request, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Updating grocery item {ItemId}", id);
-        var existing = await _context.GroceryItems.FindAsync(id);
+        var existing = await _context.GroceryItems.FindAsync(new object[] { id }, cancellationToken);
         if (existing == null)
         {
             _logger.LogWarning("Update failed: Grocery item {ItemId} not found", id);
@@ -74,15 +74,15 @@ public sealed class GroceryListStore
         existing.IsPurchased = request.IsPurchased ?? existing.IsPurchased;
         existing.UpdatedAt = DateTimeOffset.UtcNow;
 
-        await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync(cancellationToken);
         _logger.LogInformation("Grocery item {ItemId} updated successfully", id);
         return existing;
     }
 
-    public async Task<bool> DeleteAsync(Guid id)
+    public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Deleting grocery item {ItemId}", id);
-        var item = await _context.GroceryItems.FindAsync(id);
+        var item = await _context.GroceryItems.FindAsync(new object[] { id }, cancellationToken);
         if (item == null)
         {
             _logger.LogWarning("Delete failed: Grocery item {ItemId} not found", id);
@@ -90,20 +90,20 @@ public sealed class GroceryListStore
         }
 
         _context.GroceryItems.Remove(item);
-        await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync(cancellationToken);
         _logger.LogInformation("Grocery item {ItemId} deleted successfully", id);
         return true;
     }
 
-    public async Task<int> ClearPurchasedAsync(Guid householdId)
+    public async Task<int> ClearPurchasedAsync(Guid householdId, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Clearing purchased items for household {HouseholdId}", householdId);
         var purchasedItems = await _context.GroceryItems
             .Where(item => item.HouseholdId == householdId && item.IsPurchased)
-            .ToArrayAsync();
+            .ToArrayAsync(cancellationToken);
 
         _context.GroceryItems.RemoveRange(purchasedItems);
-        await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync(cancellationToken);
         _logger.LogInformation("Cleared {Count} purchased items for household {HouseholdId}", purchasedItems.Length, householdId);
         return purchasedItems.Length;
     }

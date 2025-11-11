@@ -1,3 +1,4 @@
+using System;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -16,7 +17,7 @@ internal static class GroceryEndpoints
         var group = endpoints.MapGroup("/api/grocery");
         group.RequireAuthorization();
 
-        group.MapGet(string.Empty, async Task<IResult> (HttpContext httpContext, GroceryListStore store, ILogger<Program> logger) =>
+        group.MapGet(string.Empty, async Task<IResult> (HttpContext httpContext, GroceryListStore store, ILogger<Program> logger, CancellationToken cancellationToken) =>
         {
             var householdIdString = httpContext.User.FindFirst("householdId")?.Value;
             logger.LogInformation("Getting grocery list for household {HouseholdId}", householdIdString);
@@ -27,12 +28,12 @@ internal static class GroceryEndpoints
                 return Results.Unauthorized();
             }
 
-            var items = await store.GetAllAsync(householdId);
+            var items = await store.GetAllAsync(householdId, cancellationToken);
             logger.LogInformation("Retrieved {ItemCount} grocery items for household {HouseholdId}", items.Count, householdId);
             return Results.Ok(items);
         });
 
-        group.MapPost(string.Empty, async Task<IResult> (CreateGroceryItemRequest request, HttpContext httpContext, GroceryListStore store, ILogger<Program> logger) =>
+        group.MapPost(string.Empty, async Task<IResult> (CreateGroceryItemRequest request, HttpContext httpContext, GroceryListStore store, ILogger<Program> logger, CancellationToken cancellationToken) =>
         {
             var householdIdString = httpContext.User.FindFirst("householdId")?.Value;
             logger.LogInformation("Creating grocery item for household {HouseholdId}: {ItemName}", householdIdString, request.Name);
@@ -49,12 +50,12 @@ internal static class GroceryEndpoints
                 return Results.ValidationProblem(errors);
             }
 
-            var item = await store.CreateAsync(householdId, request);
+            var item = await store.CreateAsync(householdId, request, cancellationToken);
             logger.LogInformation("Created grocery item {ItemId} for household {HouseholdId}", item.Id, householdId);
             return Results.Created($"/api/grocery/{item.Id}", item);
         });
 
-        group.MapPatch("/{id}", async Task<IResult> (Guid id, UpdateGroceryItemRequest request, HttpContext httpContext, GroceryListStore store, ILogger<Program> logger) =>
+        group.MapPatch("/{id}", async Task<IResult> (Guid id, UpdateGroceryItemRequest request, HttpContext httpContext, GroceryListStore store, ILogger<Program> logger, CancellationToken cancellationToken) =>
         {
             var householdIdString = httpContext.User.FindFirst("householdId")?.Value;
             logger.LogInformation("Updating grocery item {ItemId} for household {HouseholdId}", id, householdIdString);
@@ -71,19 +72,19 @@ internal static class GroceryEndpoints
                 return Results.ValidationProblem(errors);
             }
 
-            var item = await store.GetByIdAsync(id);
+            var item = await store.GetByIdAsync(id, cancellationToken);
             if (item is null || item.HouseholdId != householdId)
             {
                 logger.LogWarning("Grocery item {ItemId} not found or unauthorized for household {HouseholdId}", id, householdId);
                 return Results.NotFound();
             }
 
-            var updated = await store.UpdateAsync(id, request);
+            var updated = await store.UpdateAsync(id, request, cancellationToken);
             logger.LogInformation("Successfully updated grocery item {ItemId}", id);
             return updated is null ? Results.NotFound() : Results.Ok(updated);
         });
 
-        group.MapDelete("/{id}", async Task<IResult> (Guid id, HttpContext httpContext, GroceryListStore store, ILogger<Program> logger) =>
+        group.MapDelete("/{id}", async Task<IResult> (Guid id, HttpContext httpContext, GroceryListStore store, ILogger<Program> logger, CancellationToken cancellationToken) =>
         {
             var householdIdString = httpContext.User.FindFirst("householdId")?.Value;
             logger.LogInformation("Deleting grocery item {ItemId} for household {HouseholdId}", id, householdIdString);
@@ -94,14 +95,14 @@ internal static class GroceryEndpoints
                 return Results.Unauthorized();
             }
 
-            var item = await store.GetByIdAsync(id);
+            var item = await store.GetByIdAsync(id, cancellationToken);
             if (item is null || item.HouseholdId != householdId)
             {
                 logger.LogWarning("Grocery item {ItemId} not found or unauthorized for household {HouseholdId}", id, householdId);
                 return Results.NotFound();
             }
 
-            var deleted = await store.DeleteAsync(id);
+            var deleted = await store.DeleteAsync(id, cancellationToken);
             
             if (deleted)
             {
@@ -111,7 +112,7 @@ internal static class GroceryEndpoints
             return deleted ? Results.NoContent() : Results.NotFound();
         });
 
-        group.MapDelete("/purchased", async Task<IResult> (HttpContext httpContext, GroceryListStore store, ILogger<Program> logger) =>
+        group.MapDelete("/purchased", async Task<IResult> (HttpContext httpContext, GroceryListStore store, ILogger<Program> logger, CancellationToken cancellationToken) =>
         {
             var householdIdString = httpContext.User.FindFirst("householdId")?.Value;
             logger.LogInformation("Clearing purchased items for household {HouseholdId}", householdIdString);
@@ -122,7 +123,7 @@ internal static class GroceryEndpoints
                 return Results.Unauthorized();
             }
 
-            await store.ClearPurchasedAsync(householdId);
+            await store.ClearPurchasedAsync(householdId, cancellationToken);
             logger.LogInformation("Successfully cleared purchased items for household {HouseholdId}", householdId);
             return Results.NoContent();
         });

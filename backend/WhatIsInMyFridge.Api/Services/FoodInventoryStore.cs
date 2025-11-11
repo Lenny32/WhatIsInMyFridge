@@ -16,7 +16,7 @@ public sealed class FoodInventoryStore
         _logger = logger;
     }
 
-    public async Task<IReadOnlyCollection<FoodItem>> GetItemsAsync(Guid householdId, StorageLocation? location = null)
+    public async Task<IReadOnlyCollection<FoodItem>> GetItemsAsync(Guid householdId, StorageLocation? location = null, CancellationToken cancellationToken = default)
     {
         _logger.LogDebug("Retrieving food items for household {HouseholdId}, location {Location}", householdId, location?.ToString() ?? "all");
         var query = _context.FoodItems.Where(item => item.HouseholdId == householdId);
@@ -26,12 +26,12 @@ public sealed class FoodInventoryStore
             query = query.Where(item => item.Location == location.Value);
         }
 
-        var items = await query.ToArrayAsync();
+        var items = await query.ToArrayAsync(cancellationToken);
         _logger.LogDebug("Retrieved {Count} food items for household {HouseholdId}", items.Length, householdId);
         return items;
     }
 
-    public async Task<IReadOnlyCollection<FoodItem>> GetToBuyListAsync(Guid householdId)
+    public async Task<IReadOnlyCollection<FoodItem>> GetToBuyListAsync(Guid householdId, CancellationToken cancellationToken = default)
     {
         _logger.LogDebug("Retrieving to-buy list for household {HouseholdId}", householdId);
         
@@ -39,7 +39,7 @@ public sealed class FoodInventoryStore
         // This avoids the Cosmos DB field-to-field decimal comparison issue
         var allItems = await _context.FoodItems
             .Where(item => item.HouseholdId == householdId)
-            .ToArrayAsync();
+            .ToArrayAsync(cancellationToken);
             
         var items = allItems
             .Where(item => item.Quantity <= item.RestockThreshold)
@@ -49,12 +49,12 @@ public sealed class FoodInventoryStore
         return items;
     }
 
-    public async Task<FoodItem?> GetByIdAsync(Guid id)
+    public async Task<FoodItem?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        return await _context.FoodItems.FindAsync(id);
+        return await _context.FoodItems.FindAsync(new object[] { id }, cancellationToken);
     }
 
-    public async Task<FoodItem> CreateAsync(Guid householdId, CreateFoodItemRequest request)
+    public async Task<FoodItem> CreateAsync(Guid householdId, CreateFoodItemRequest request, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Creating food item {Name} for household {HouseholdId}", request.Name, householdId);
         var now = DateTimeOffset.UtcNow;
@@ -74,15 +74,15 @@ public sealed class FoodInventoryStore
         };
         
         _context.FoodItems.Add(item);
-        await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync(cancellationToken);
         _logger.LogInformation("Food item {ItemId} created successfully", item.Id);
         return item;
     }
 
-    public async Task<FoodItem?> UpdateAsync(Guid id, UpdateFoodItemRequest request)
+    public async Task<FoodItem?> UpdateAsync(Guid id, UpdateFoodItemRequest request, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Updating food item {ItemId}", id);
-        var existing = await _context.FoodItems.FindAsync(id);
+        var existing = await _context.FoodItems.FindAsync(new object[] { id }, cancellationToken);
         if (existing == null)
         {
             _logger.LogWarning("Update failed: Food item {ItemId} not found", id);
@@ -99,15 +99,15 @@ public sealed class FoodInventoryStore
         existing.Notes = request.Notes is { Length: > 0 } notes ? notes.Trim() : request.Notes == string.Empty ? null : existing.Notes;
         existing.UpdatedAt = DateTimeOffset.UtcNow;
 
-        await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync(cancellationToken);
         _logger.LogInformation("Food item {ItemId} updated successfully", id);
         return existing;
     }
 
-    public async Task<bool> DeleteAsync(Guid id)
+    public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Deleting food item {ItemId}", id);
-        var item = await _context.FoodItems.FindAsync(id);
+        var item = await _context.FoodItems.FindAsync(new object[] { id }, cancellationToken);
         if (item == null)
         {
             _logger.LogWarning("Delete failed: Food item {ItemId} not found", id);
@@ -115,7 +115,7 @@ public sealed class FoodInventoryStore
         }
 
         _context.FoodItems.Remove(item);
-        await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync(cancellationToken);
         _logger.LogInformation("Food item {ItemId} deleted successfully", id);
         return true;
     }

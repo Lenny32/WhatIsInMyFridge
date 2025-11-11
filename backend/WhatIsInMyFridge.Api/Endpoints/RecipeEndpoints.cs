@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Security.Claims;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -8,6 +9,7 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Logging;
 using WhatIsInMyFridge.Api.Dtos;
 using WhatIsInMyFridge.Api.Infrastructure;
+using WhatIsInMyFridge.Api.Models;
 using WhatIsInMyFridge.Api.Services;
 
 namespace WhatIsInMyFridge.Api.Endpoints;
@@ -29,7 +31,7 @@ internal static class RecipeEndpoints
         var group = endpoints.MapGroup("/api/recipes");
         group.RequireAuthorization();
 
-        group.MapGet(string.Empty, async Task<IResult> (HttpContext httpContext, RecipeStore store, ILogger<Program> logger) =>
+        group.MapGet(string.Empty, async Task<IResult> (HttpContext httpContext, RecipeStore store, ILogger<Program> logger, CancellationToken cancellationToken) =>
         {
             var householdIdString = httpContext.User.FindFirst("householdId")?.Value;
             logger.LogInformation("Getting recipes for household {HouseholdId}", householdIdString);
@@ -40,12 +42,12 @@ internal static class RecipeEndpoints
                 return Results.Unauthorized();
             }
 
-            var recipes = await store.GetRecipesAsync(householdId);
+            var recipes = await store.GetRecipesAsync(householdId, cancellationToken);
             logger.LogInformation("Retrieved {RecipeCount} recipes for household {HouseholdId}", recipes.Count, householdId);
             return Results.Ok(recipes);
         });
 
-        group.MapGet("/{id}", async Task<IResult> (Guid id, HttpContext httpContext, RecipeStore store, ILogger<Program> logger) =>
+        group.MapGet("/{id}", async Task<IResult> (Guid id, HttpContext httpContext, RecipeStore store, ILogger<Program> logger, CancellationToken cancellationToken) =>
         {
             var householdIdString = httpContext.User.FindFirst("householdId")?.Value;
             logger.LogInformation("Getting recipe {RecipeId} for household {HouseholdId}", id, householdIdString);
@@ -56,7 +58,7 @@ internal static class RecipeEndpoints
                 return Results.Unauthorized();
             }
 
-            var recipe = await store.GetByIdAsync(id);
+            var recipe = await store.GetByIdAsync(id, cancellationToken);
             if (recipe is null || recipe.HouseholdId != householdId)
             {
                 logger.LogWarning("Recipe {RecipeId} not found or unauthorized for household {HouseholdId}", id, householdId);
@@ -66,7 +68,7 @@ internal static class RecipeEndpoints
             return Results.Ok(recipe);
         });
 
-        group.MapPost(string.Empty, async Task<IResult> (CreateRecipeRequest request, HttpContext httpContext, RecipeStore store, ILogger<Program> logger) =>
+        group.MapPost(string.Empty, async Task<IResult> (CreateRecipeRequest request, HttpContext httpContext, RecipeStore store, ILogger<Program> logger, CancellationToken cancellationToken) =>
         {
             var householdIdString = httpContext.User.FindFirst("householdId")?.Value;
             logger.LogInformation("Creating recipe '{RecipeName}' for household {HouseholdId}", request.Name, householdIdString);
@@ -83,12 +85,12 @@ internal static class RecipeEndpoints
                 return Results.ValidationProblem(errors);
             }
 
-            var recipe = await store.CreateAsync(householdId, request);
+            var recipe = await store.CreateAsync(householdId, request, cancellationToken);
             logger.LogInformation("Created recipe {RecipeId} for household {HouseholdId}", recipe.Id, householdId);
             return Results.Created($"/api/recipes/{recipe.Id}", recipe);
         });
 
-        group.MapPatch("/{id}", async Task<IResult> (Guid id, UpdateRecipeRequest request, HttpContext httpContext, RecipeStore store, ILogger<Program> logger) =>
+        group.MapPatch("/{id}", async Task<IResult> (Guid id, UpdateRecipeRequest request, HttpContext httpContext, RecipeStore store, ILogger<Program> logger, CancellationToken cancellationToken) =>
         {
             var householdIdString = httpContext.User.FindFirst("householdId")?.Value;
             logger.LogInformation("Updating recipe {RecipeId} for household {HouseholdId}", id, householdIdString);
@@ -105,19 +107,19 @@ internal static class RecipeEndpoints
                 return Results.ValidationProblem(errors);
             }
 
-            var recipe = await store.GetByIdAsync(id);
+            var recipe = await store.GetByIdAsync(id, cancellationToken);
             if (recipe is null || recipe.HouseholdId != householdId)
             {
                 logger.LogWarning("Recipe {RecipeId} not found or unauthorized for household {HouseholdId}", id, householdId);
                 return Results.NotFound();
             }
 
-            var updated = await store.UpdateAsync(id, request);
+            var updated = await store.UpdateAsync(id, request, cancellationToken);
             logger.LogInformation("Successfully updated recipe {RecipeId}", id);
             return updated is null ? Results.NotFound() : Results.Ok(updated);
         });
 
-        group.MapDelete("/{id}", async Task<IResult> (Guid id, HttpContext httpContext, RecipeStore store, ILogger<Program> logger) =>
+        group.MapDelete("/{id}", async Task<IResult> (Guid id, HttpContext httpContext, RecipeStore store, ILogger<Program> logger, CancellationToken cancellationToken) =>
         {
             var householdIdString = httpContext.User.FindFirst("householdId")?.Value;
             logger.LogInformation("Deleting recipe {RecipeId} for household {HouseholdId}", id, householdIdString);
@@ -128,14 +130,14 @@ internal static class RecipeEndpoints
                 return Results.Unauthorized();
             }
 
-            var recipe = await store.GetByIdAsync(id);
+            var recipe = await store.GetByIdAsync(id, cancellationToken);
             if (recipe is null || recipe.HouseholdId != householdId)
             {
                 logger.LogWarning("Recipe {RecipeId} not found or unauthorized for household {HouseholdId}", id, householdId);
                 return Results.NotFound();
             }
 
-            var deleted = await store.DeleteAsync(id);
+            var deleted = await store.DeleteAsync(id, cancellationToken);
             
             if (deleted)
             {
@@ -151,7 +153,7 @@ internal static class RecipeEndpoints
         var group = endpoints.MapGroup("/api/ingredients");
         group.RequireAuthorization();
 
-        group.MapGet("/suggestions", async Task<IResult> (string? query, HttpContext httpContext, RecipeStore store, ILogger<Program> logger) =>
+        group.MapGet("/suggestions", async Task<IResult> (string? query, HttpContext httpContext, RecipeStore store, ILogger<Program> logger, CancellationToken cancellationToken) =>
         {
             var householdIdString = httpContext.User.FindFirst("householdId")?.Value;
             logger.LogInformation("Getting ingredient suggestions for household {HouseholdId}, query: {Query}", householdIdString, query);
@@ -168,7 +170,7 @@ internal static class RecipeEndpoints
                 return Results.Ok(Array.Empty<string>());
             }
 
-            var suggestions = await store.GetIngredientSuggestionsAsync(householdId, query);
+            var suggestions = await store.GetIngredientSuggestionsAsync(householdId, query, cancellationToken);
             logger.LogInformation("Retrieved {SuggestionCount} ingredient suggestions for household {HouseholdId}", suggestions.Count, householdId);
             return Results.Ok(suggestions);
         });
@@ -179,10 +181,11 @@ internal static class RecipeEndpoints
         var group = endpoints.MapGroup("/api/recipes");
         group.RequireAuthorization();
 
-        group.MapPost("/{id}/photos", async Task<IResult> (Guid id, IFormFile file, HttpContext httpContext, RecipeStore store, BlobStorageService blobStorage, ILogger<Program> logger) =>
+        group.MapPost("/{id}/photos", async Task<IResult> (Guid id, IFormFile file, HttpContext httpContext, RecipeStore store, BlobStorageService blobStorage, ILogger<Program> logger, CancellationToken cancellationToken) =>
         {
             var householdIdString = httpContext.User.FindFirst("householdId")?.Value;
-            logger.LogInformation("Uploading photo for recipe {RecipeId}, household {HouseholdId}", id, householdIdString);
+            var userIdString = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            logger.LogInformation("Uploading photo for recipe {RecipeId}, household {HouseholdId}, user {UserId}", id, householdIdString, userIdString);
             
             if (string.IsNullOrEmpty(householdIdString) || !Guid.TryParse(householdIdString, out Guid householdId))
             {
@@ -190,7 +193,13 @@ internal static class RecipeEndpoints
                 return Results.Unauthorized();
             }
 
-            var recipe = await store.GetByIdAsync(id);
+            if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out Guid userId))
+            {
+                logger.LogWarning("Unauthorized attempt to upload photo for recipe {RecipeId}", id);
+                return Results.Unauthorized();
+            }
+
+            var recipe = await store.GetByIdAsync(id, cancellationToken);
             if (recipe == null || recipe.HouseholdId != householdId)
             {
                 logger.LogWarning("Recipe {RecipeId} not found or unauthorized for household {HouseholdId}", id, householdId);
@@ -222,55 +231,65 @@ internal static class RecipeEndpoints
                 return Results.BadRequest(new { error = "Invalid file type. Only JPEG, PNG, and WebP images are allowed" });
             }
 
+            // Generate filename in format: UserId_yyyyMMddHHmmss.{ext}
             var extension = Path.GetExtension(file.FileName);
-            var photoId = Guid.NewGuid().ToString("N");
-            var fileName = $"{photoId}{extension}";
+            var timestamp = DateTime.UtcNow.ToString("yyyyMMddHHmmss");
+            var fileName = $"{userId}_{timestamp}{extension}";
+            var originalFileName = file.FileName;
 
             using (var stream = file.OpenReadStream())
             {
-                await blobStorage.UploadPhotoAsync(stream, fileName, file.ContentType);
+                await blobStorage.UploadPhotoAsync(stream, fileName, file.ContentType, cancellationToken);
             }
 
-            recipe.Photos.Add(photoId);
-            recipe.UpdatedAt = DateTimeOffset.UtcNow;
-            await store.UpdatePhotosAsync(id, recipe.Photos);
-            
-            logger.LogInformation("Successfully uploaded photo {PhotoId} for recipe {RecipeId}", photoId, id);
+            var recipePhoto = new RecipePhoto
+            {
+                FileName = fileName,
+                OriginalFileName = originalFileName,
+                UploadedAt = DateTimeOffset.UtcNow
+            };
 
-            return Results.Ok(new { photoId, url = $"/api/photos/{photoId}{extension}" });
+            recipe.Photos.Add(recipePhoto);
+            recipe.UpdatedAt = DateTimeOffset.UtcNow;
+            await store.UpdatePhotosAsync(id, recipe.Photos, cancellationToken);
+            
+            logger.LogInformation("Successfully uploaded photo {FileName} (original: {OriginalFileName}) for recipe {RecipeId}", fileName, originalFileName, id);
+
+            return Results.Ok(new { fileName, originalFileName, url = $"/api/photos/{fileName}" });
         }).DisableAntiforgery();
 
-        group.MapDelete("/{id}/photos/{photoId}", async Task<IResult> (Guid id, string photoId, HttpContext httpContext, RecipeStore store, BlobStorageService blobStorage, ILogger<Program> logger) =>
+        group.MapDelete("/{id}/photos/{fileName}", async Task<IResult> (Guid id, string fileName, HttpContext httpContext, RecipeStore store, BlobStorageService blobStorage, ILogger<Program> logger, CancellationToken cancellationToken) =>
         {
             var householdIdString = httpContext.User.FindFirst("householdId")?.Value;
-            logger.LogInformation("Deleting photo {PhotoId} from recipe {RecipeId}, household {HouseholdId}", photoId, id, householdIdString);
+            logger.LogInformation("Deleting photo {FileName} from recipe {RecipeId}, household {HouseholdId}", fileName, id, householdIdString);
             
             if (string.IsNullOrEmpty(householdIdString) || !Guid.TryParse(householdIdString, out Guid householdId))
             {
-                logger.LogWarning("Unauthorized attempt to delete photo {PhotoId} from recipe {RecipeId}", photoId, id);
+                logger.LogWarning("Unauthorized attempt to delete photo {FileName} from recipe {RecipeId}", fileName, id);
                 return Results.Unauthorized();
             }
 
-            var recipe = await store.GetByIdAsync(id);
+            var recipe = await store.GetByIdAsync(id, cancellationToken);
             if (recipe == null || recipe.HouseholdId != householdId)
             {
                 logger.LogWarning("Recipe {RecipeId} not found or unauthorized for household {HouseholdId}", id, householdId);
                 return Results.NotFound();
             }
 
-            if (!recipe.Photos.Contains(photoId))
+            var photo = recipe.Photos.FirstOrDefault(p => p.FileName == fileName);
+            if (photo == null)
             {
-                logger.LogWarning("Photo {PhotoId} not found in recipe {RecipeId}", photoId, id);
+                logger.LogWarning("Photo {FileName} not found in recipe {RecipeId}", fileName, id);
                 return Results.NotFound();
             }
 
-            await blobStorage.DeletePhotoAsync(photoId);
+            await blobStorage.DeletePhotoAsync(Path.GetFileNameWithoutExtension(fileName), cancellationToken);
 
-            recipe.Photos.Remove(photoId);
+            recipe.Photos.Remove(photo);
             recipe.UpdatedAt = DateTimeOffset.UtcNow;
-            await store.UpdatePhotosAsync(id, recipe.Photos);
+            await store.UpdatePhotosAsync(id, recipe.Photos, cancellationToken);
             
-            logger.LogInformation("Successfully deleted photo {PhotoId} from recipe {RecipeId}", photoId, id);
+            logger.LogInformation("Successfully deleted photo {FileName} from recipe {RecipeId}", fileName, id);
 
             return Results.NoContent();
         });
@@ -278,11 +297,11 @@ internal static class RecipeEndpoints
 
     private static void MapPhotoServing(IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapGet("/api/photos/{fileName}", async Task<IResult> (string fileName, BlobStorageService blobStorage, ILogger<Program> logger) =>
+        endpoints.MapGet("/api/photos/{fileName}", async Task<IResult> (string fileName, BlobStorageService blobStorage, ILogger<Program> logger, CancellationToken cancellationToken) =>
         {
             logger.LogDebug("Serving photo {FileName}", fileName);
             
-            var photoData = await blobStorage.GetPhotoAsync(fileName);
+            var photoData = await blobStorage.GetPhotoAsync(fileName, cancellationToken);
             if (photoData == null)
             {
                 logger.LogWarning("Photo {FileName} not found", fileName);

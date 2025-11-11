@@ -15,32 +15,32 @@ public sealed class UserStore
         _logger = logger;
     }
 
-    public async Task<User?> GetByIdAsync(Guid id)
+    public async Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        return await _context.Users.FindAsync(id);
+        return await _context.Users.FindAsync(new object[] { id }, cancellationToken);
     }
 
-    public async Task<User?> GetByEmailAsync(string email)
+    public async Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default)
     {
         return await _context.Users
-            .FirstOrDefaultAsync(u => u.Email.ToLower() == email.ToLower());
+            .FirstOrDefaultAsync(u => u.Email.ToLower() == email.ToLower(), cancellationToken);
     }
 
-    public async Task<User> CreateAsync(User user)
+    public async Task<User> CreateAsync(User user, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Creating user {UserId} with email {Email}", user.Id, user.Email);
         _context.Users.Add(user);
-        await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync(cancellationToken);
         _logger.LogInformation("User {UserId} created successfully", user.Id);
         return user;
     }
 
-    public async Task<User?> UpdateAsync(User user)
+    public async Task<User?> UpdateAsync(User user, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Updating user {UserId}", user.Id);
         var existing = await _context.Users
             .AsNoTracking()
-            .FirstOrDefaultAsync(u => u.Id == user.Id);
+            .FirstOrDefaultAsync(u => u.Id == user.Id, cancellationToken);
         
         if (existing == null)
         {
@@ -53,18 +53,18 @@ public sealed class UserStore
         
         // Attach and mark as modified - this respects the partition key
         _context.Users.Update(user);
-        await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync(cancellationToken);
         
         _logger.LogInformation("User {UserId} updated successfully", user.Id);
         return user;
     }
     
-    public async Task<List<User>> GetAllUsersAsync()
+    public async Task<List<User>> GetAllUsersAsync(CancellationToken cancellationToken = default)
     {
         _logger.LogDebug("Retrieving all users");
         var users = await _context.Users
             .OrderBy(u => u.Email)
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
         _logger.LogDebug("Retrieved {Count} users", users.Count);
         return users;
     }

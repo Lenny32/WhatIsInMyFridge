@@ -22,33 +22,67 @@ public sealed class BlobStorageService
         // Otherwise, fall back to local file storage
         _blobServiceClient = blobServiceClient;
         _containerName = configuration["BlobStorage:ContainerName"] ?? "blobs";
-
-        // Use /app/data in production (Docker), or ../data locally
-        var dataDir = environment.IsProduction() 
-            ? "/app/data" 
-            : Path.Combine(AppContext.BaseDirectory, "..", "data");
-        Directory.CreateDirectory(dataDir);
-        _localPhotosPath = Path.Combine(dataDir, "photos");
-        Directory.CreateDirectory(_localPhotosPath);
-
         _useBlobStorage = _blobServiceClient != null;
         _logger = logger;
+
+        // Only set up local storage if blob storage is not available
+        if (!_useBlobStorage)
+        {
+            // Get the local storage path from configuration with a sensible default
+            // This allows different paths for different environments via appsettings.json
+            var localStoragePath = configuration["BlobStorage:LocalPath"];
+            
+            if (string.IsNullOrEmpty(localStoragePath))
+            {
+                // Use ContentRootPath (the app's root directory) as the base
+                // This is more reliable than AppContext.BaseDirectory
+                localStoragePath = Path.Combine(environment.ContentRootPath, "App_Data", "photos");
+            }
+            
+            try
+            {
+                _localPhotosPath = Path.GetFullPath(localStoragePath);
+                Directory.CreateDirectory(_localPhotosPath);
+                _logger.LogInformation("Local file storage initialized at: {LocalPath}", _localPhotosPath);
+            }
+            catch (Exception ex)
+            {
+                // If we can't create the directory, fall back to temp directory
+                _logger.LogWarning(ex, "Failed to create local storage directory at {LocalPath}, using temp directory", localStoragePath);
+                _localPhotosPath = Path.Combine(Path.GetTempPath(), "whatsinmyfridge", "photos");
+                try
+                {
+                    Directory.CreateDirectory(_localPhotosPath);
+                    _logger.LogInformation("Fallback local file storage initialized at: {LocalPath}", _localPhotosPath);
+                }
+                catch (Exception tempEx)
+                {
+                    _logger.LogError(tempEx, "Failed to create fallback storage directory. Photo uploads will fail.");
+                    _localPhotosPath = string.Empty;
+                }
+            }
+        }
+        else
+        {
+            _localPhotosPath = string.Empty;
+            _logger.LogInformation("BlobStorageService initialized using Azure Blob Storage");
+        }
         
-        _logger.LogInformation("BlobStorageService initialized. Using blob storage: {UseBlobStorage}, Local path: {LocalPath}", 
-            _useBlobStorage, _localPhotosPath);
+        _logger.LogInformation("BlobStorageService initialized. Using blob storage: {UseBlobStorage}", _useBlobStorage);
     }
 
-    public async Task<string> UploadPhotoAsync(Stream photoStream, string fileName, string contentType)
+    public async Task<string> UploadPhotoAsync(Stream photoStream, string fileName, string contentType, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Uploading photo {FileName} with content type {ContentType}", fileName, contentType);
         
         if (_useBlobStorage && _blobServiceClient != null)
         {
             var containerClient = _blobServiceClient.GetBlobContainerClient(_containerName);
-            await containerClient.CreateIfNotExistsAsync(PublicAccessType.Blob);
+            // Create container with private access (no public access)
+            await containerClient.CreateIfNotExistsAsync(PublicAccessType.None, cancellationToken: cancellationToken);
 
             var blobClient = containerClient.GetBlobClient(fileName);
-            await blobClient.UploadAsync(photoStream, new BlobHttpHeaders { ContentType = contentType });
+            await blobClient.UploadAsync(photoStream, new BlobHttpHeaders { ContentType = contentType }, cancellationToken: cancellationToken);
 
             _logger.LogInformation("Photo {FileName} uploaded to blob storage: {Uri}", fileName, blobClient.Uri);
             return blobClient.Uri.ToString();
@@ -59,14 +93,13 @@ public sealed class BlobStorageService
             var filePath = Path.Combine(_localPhotosPath, fileName);
             using (var fileStream = new FileStream(filePath, FileMode.Create))
             {
-                await photoStream.CopyToAsync(fileStream);
+                await photoStream.CopyToAsync(fileStream, cancellationToken);
             }
             _logger.LogInformation("Photo {FileName} saved to local storage: {Path}", fileName, filePath);
             return $"/api/photos/{fileName}";
         }
     }
-
-    public async Task DeletePhotoAsync(string photoId)
+    public async Task DeletePhotoAsync(string photoId, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Deleting photo {PhotoId}", photoId);
         
@@ -80,7 +113,7 @@ public sealed class BlobStorageService
             {
                 var fileName = $"{photoId}{ext}";
                 var blobClient = containerClient.GetBlobClient(fileName);
-                var deleted = await blobClient.DeleteIfExistsAsync();
+                var deleted = await blobClient.DeleteIfExistsAsync(cancellationToken: cancellationToken);
                 if (deleted)
                 {
                     _logger.LogInformation("Deleted photo {PhotoId} from blob storage", fileName);
@@ -99,7 +132,7 @@ public sealed class BlobStorageService
         }
     }
 
-    public async Task<(byte[] fileBytes, string contentType)?> GetPhotoAsync(string fileName)
+    public async Task<(byte[] fileBytes, string contentType)?> GetPhotoAsync(string fileName, CancellationToken cancellationToken = default)
     {
         _logger.LogDebug("Retrieving photo {FileName}", fileName);
         
@@ -108,15 +141,15 @@ public sealed class BlobStorageService
             var containerClient = _blobServiceClient.GetBlobContainerClient(_containerName);
             var blobClient = containerClient.GetBlobClient(fileName);
 
-            if (!await blobClient.ExistsAsync())
+            if (!await blobClient.ExistsAsync(cancellationToken))
             {
                 _logger.LogWarning("Photo {FileName} not found in blob storage", fileName);
                 return null;
             }
 
-            var downloadResult = await blobClient.DownloadAsync();
+            var downloadResult = await blobClient.DownloadAsync(cancellationToken);
             using var memoryStream = new MemoryStream();
-            await downloadResult.Value.Content.CopyToAsync(memoryStream);
+            await downloadResult.Value.Content.CopyToAsync(memoryStream, cancellationToken);
             
             _logger.LogDebug("Photo {FileName} retrieved from blob storage", fileName);
             return (memoryStream.ToArray(), downloadResult.Value.ContentType);
@@ -140,7 +173,7 @@ public sealed class BlobStorageService
                 _ => "application/octet-stream"
             };
 
-            var fileBytes = await File.ReadAllBytesAsync(filePath);
+            var fileBytes = await File.ReadAllBytesAsync(filePath, cancellationToken);
             _logger.LogDebug("Photo {FileName} retrieved from local storage", fileName);
             return (fileBytes, contentType);
         }

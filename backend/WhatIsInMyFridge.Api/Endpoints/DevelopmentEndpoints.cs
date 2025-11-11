@@ -54,7 +54,7 @@ internal static class DevelopmentEndpoints
         group.RequireAuthorization();
 
         // Database CRUD testing endpoint - requires admin access
-        group.MapGet("/test-database", async Task<IResult> (HttpContext httpContext, AppDbContext dbContext, UserStore userStore, ILogger<Program> logger) =>
+        group.MapGet("/test-database", async Task<IResult> (HttpContext httpContext, AppDbContext dbContext, UserStore userStore, ILogger<Program> logger, CancellationToken cancellationToken) =>
         {
             var userId = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             logger.LogInformation("Database CRUD test requested by user: {UserId}", userId);
@@ -72,7 +72,7 @@ internal static class DevelopmentEndpoints
                 return Results.BadRequest("Invalid user ID format");
             }
 
-            var currentUser = await userStore.GetByIdAsync(userGuid);
+            var currentUser = await userStore.GetByIdAsync(userGuid, cancellationToken);
             if (currentUser == null || !currentUser.IsAdmin)
             {
                 logger.LogWarning("Non-admin user {UserId} attempted to access database test endpoint", userId);
@@ -100,7 +100,7 @@ internal static class DevelopmentEndpoints
                     };
                     
                     dbContext.Households.Add(testHousehold);
-                    await dbContext.SaveChangesAsync();
+                    await dbContext.SaveChangesAsync(cancellationToken);
                     testHouseholdId = testHousehold.Id;
                     
                     logger.LogInformation("Created test household {HouseholdId}", testHouseholdId);
@@ -136,7 +136,7 @@ internal static class DevelopmentEndpoints
                         UpdatedAt = DateTimeOffset.UtcNow
                     };
                     dbContext.FoodItems.Add(foodItem);
-                    await dbContext.SaveChangesAsync();
+                    await dbContext.SaveChangesAsync(cancellationToken);
                     testItemId = foodItem.Id;
                     operations.Add("Create: Success");
 
@@ -157,7 +157,7 @@ internal static class DevelopmentEndpoints
                         readItem.Name = "Updated Test Food Item";
                         readItem.Quantity = 10;
                         readItem.UpdatedAt = DateTimeOffset.UtcNow;
-                        await dbContext.SaveChangesAsync();
+                        await dbContext.SaveChangesAsync(cancellationToken);
                         
                         var verifyUpdate = await dbContext.FoodItems.FindAsync(testItemId);
                         if (verifyUpdate != null && verifyUpdate.Name == "Updated Test Food Item" && verifyUpdate.Quantity == 10)
@@ -177,7 +177,7 @@ internal static class DevelopmentEndpoints
                         if (itemToDelete != null)
                         {
                             dbContext.FoodItems.Remove(itemToDelete);
-                            await dbContext.SaveChangesAsync();
+                            await dbContext.SaveChangesAsync(cancellationToken);
                             
                             var verifyDelete = await dbContext.FoodItems.FindAsync(testItemId);
                             if (verifyDelete == null)
@@ -237,7 +237,7 @@ internal static class DevelopmentEndpoints
                         UpdatedAt = DateTimeOffset.UtcNow
                     };
                     dbContext.GroceryItems.Add(groceryItem);
-                    await dbContext.SaveChangesAsync();
+                    await dbContext.SaveChangesAsync(cancellationToken);
                     testItemId = groceryItem.Id;
                     operations.Add("Create: Success");
 
@@ -259,7 +259,7 @@ internal static class DevelopmentEndpoints
                         readItem.IsPurchased = true;
                         readItem.Quantity = 5;
                         readItem.UpdatedAt = DateTimeOffset.UtcNow;
-                        await dbContext.SaveChangesAsync();
+                        await dbContext.SaveChangesAsync(cancellationToken);
                         
                         var verifyUpdate = await dbContext.GroceryItems.FindAsync(testItemId);
                         if (verifyUpdate != null && verifyUpdate.Name == "Updated Grocery Item" && verifyUpdate.IsPurchased)
@@ -279,7 +279,7 @@ internal static class DevelopmentEndpoints
                         if (itemToDelete != null)
                         {
                             dbContext.GroceryItems.Remove(itemToDelete);
-                            await dbContext.SaveChangesAsync();
+                            await dbContext.SaveChangesAsync(cancellationToken);
                             
                             var verifyDelete = await dbContext.GroceryItems.FindAsync(testItemId);
                             if (verifyDelete == null)
@@ -346,12 +346,12 @@ internal static class DevelopmentEndpoints
                         },
                         Instructions = new List<string> { "Step 1: Test", "Step 2: Verify" },
                         Notes = "Test recipe notes",
-                        Photos = new List<string>(),
+                        Photos = new List<RecipePhoto>(),
                         CreatedAt = DateTimeOffset.UtcNow,
                         UpdatedAt = DateTimeOffset.UtcNow
                     };
                     dbContext.Recipes.Add(recipe);
-                    await dbContext.SaveChangesAsync();
+                    await dbContext.SaveChangesAsync(cancellationToken);
                     testItemId = recipe.Id;
                     operations.Add("Create: Success");
 
@@ -373,7 +373,7 @@ internal static class DevelopmentEndpoints
                         readItem.Servings = 6;
                         readItem.Description = "Updated description";
                         readItem.UpdatedAt = DateTimeOffset.UtcNow;
-                        await dbContext.SaveChangesAsync();
+                        await dbContext.SaveChangesAsync(cancellationToken);
                         
                         var verifyUpdate = await dbContext.Recipes.FindAsync(testItemId);
                         if (verifyUpdate != null && verifyUpdate.Name == "Updated Test Recipe" && verifyUpdate.Servings == 6)
@@ -393,7 +393,7 @@ internal static class DevelopmentEndpoints
                         if (itemToDelete != null)
                         {
                             dbContext.Recipes.Remove(itemToDelete);
-                            await dbContext.SaveChangesAsync();
+                            await dbContext.SaveChangesAsync(cancellationToken);
                             
                             var verifyDelete = await dbContext.Recipes.FindAsync(testItemId);
                             if (verifyDelete == null)
@@ -450,7 +450,7 @@ internal static class DevelopmentEndpoints
                         UpdatedAt = DateTimeOffset.UtcNow
                     };
                     dbContext.Households.Add(household);
-                    await dbContext.SaveChangesAsync();
+                    await dbContext.SaveChangesAsync(cancellationToken);
                     testItemId = household.Id;
                     operations.Add("Create: Success");
 
@@ -470,7 +470,7 @@ internal static class DevelopmentEndpoints
                     {
                         readItem.Name = "Updated CRUD Household";
                         readItem.UpdatedAt = DateTimeOffset.UtcNow;
-                        await dbContext.SaveChangesAsync();
+                        await dbContext.SaveChangesAsync(cancellationToken);
                         
                         var verifyUpdate = await dbContext.Households.FindAsync(testItemId);
                         if (verifyUpdate != null && verifyUpdate.Name == "Updated CRUD Household")
@@ -490,7 +490,7 @@ internal static class DevelopmentEndpoints
                         if (itemToDelete != null)
                         {
                             dbContext.Households.Remove(itemToDelete);
-                            await dbContext.SaveChangesAsync();
+                            await dbContext.SaveChangesAsync(cancellationToken);
                             
                             var verifyDelete = await dbContext.Households.FindAsync(testItemId);
                             if (verifyDelete == null)

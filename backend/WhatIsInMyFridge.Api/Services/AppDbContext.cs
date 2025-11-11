@@ -81,6 +81,8 @@ public sealed class AppDbContext : DbContext
             {
                 ingredient.Property(i => i.Unit).HasConversion<string>();
             });
+            // Photos are stored inline as owned entities
+            entity.OwnsMany(e => e.Photos);
         });
 
         // RecipeIngredients container is not used - ingredients are stored inline with Recipe

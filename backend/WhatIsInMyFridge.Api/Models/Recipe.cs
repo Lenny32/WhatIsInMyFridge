@@ -15,7 +15,7 @@ public sealed class Recipe
     
     public List<string> Instructions { get; set; } = new();
     public string? Notes { get; set; }
-    public List<string> Photos { get; set; } = new();
+    public List<RecipePhoto> Photos { get; set; } = new();
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
 }

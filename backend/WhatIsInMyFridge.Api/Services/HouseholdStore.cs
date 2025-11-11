@@ -15,16 +15,16 @@ public sealed class HouseholdStore
         _logger = logger;
     }
 
-    public async Task<Household?> GetByIdAsync(Guid id)
+    public async Task<Household?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        return await _context.Households.FindAsync(id);
+        return await _context.Households.FindAsync(new object[] { id }, cancellationToken);
     }
 
-    public async Task<IReadOnlyCollection<Household>> GetByUserIdAsync(Guid userId)
+    public async Task<IReadOnlyCollection<Household>> GetByUserIdAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         // Alternative approach: Use User.HouseholdIds to avoid ARRAY_CONTAINS query on Household.MemberIds
         // This bypasses the Cosmos DB emulator indexing issue with array operations
-        var user = await _context.Users.FindAsync(userId);
+        var user = await _context.Users.FindAsync(new object[] { userId }, cancellationToken);
         if (user?.HouseholdIds == null || user.HouseholdIds.Count == 0)
         {
             return Array.Empty<Household>();
@@ -34,7 +34,7 @@ public sealed class HouseholdStore
         var households = new List<Household>();
         foreach (var householdId in user.HouseholdIds)
         {
-            var household = await _context.Households.FindAsync(householdId);
+            var household = await _context.Households.FindAsync(new object[] { householdId }, cancellationToken);
             if (household != null)
             {
                 households.Add(household);
@@ -44,19 +44,19 @@ public sealed class HouseholdStore
         return households.AsReadOnly();
     }
 
-    public async Task<Household> CreateAsync(Household household)
+    public async Task<Household> CreateAsync(Household household, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Creating household {HouseholdId} with name {Name}", household.Id, household.Name);
         _context.Households.Add(household);
-        await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync(cancellationToken);
         _logger.LogInformation("Household {HouseholdId} created successfully", household.Id);
         return household;
     }
 
-    public async Task<Household?> UpdateAsync(Household household)
+    public async Task<Household?> UpdateAsync(Household household, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Updating household {HouseholdId}", household.Id);
-        var existing = await _context.Households.FindAsync(household.Id);
+        var existing = await _context.Households.FindAsync(new object[] { household.Id }, cancellationToken);
         if (existing == null)
         {
             _logger.LogWarning("Update failed: Household {HouseholdId} not found", household.Id);
@@ -69,15 +69,15 @@ public sealed class HouseholdStore
         existing.OwnerId = household.OwnerId;
         existing.UpdatedAt = DateTimeOffset.UtcNow;
         
-        await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync(cancellationToken);
         _logger.LogInformation("Household {HouseholdId} updated successfully", household.Id);
         return existing;
     }
 
-    public async Task<bool> DeleteAsync(Guid id)
+    public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Deleting household {HouseholdId}", id);
-        var household = await _context.Households.FindAsync(id);
+        var household = await _context.Households.FindAsync(new object[] { id }, cancellationToken);
         if (household == null)
         {
             _logger.LogWarning("Delete failed: Household {HouseholdId} not found", id);
@@ -85,7 +85,7 @@ public sealed class HouseholdStore
         }
 
         _context.Households.Remove(household);
-        await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync(cancellationToken);
         _logger.LogInformation("Household {HouseholdId} deleted successfully", id);
         return true;
     }

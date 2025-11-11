@@ -16,26 +16,26 @@ public sealed class RecipeStore
         _logger = logger;
     }
 
-    public async Task<IReadOnlyCollection<Recipe>> GetRecipesAsync(Guid householdId)
+    public async Task<IReadOnlyCollection<Recipe>> GetRecipesAsync(Guid householdId, CancellationToken cancellationToken = default)
     {
         _logger.LogDebug("Retrieving recipes for household {HouseholdId}", householdId);
         var recipes = await _context.Recipes
             .Include(r => r.Ingredients)
             .Where(r => r.HouseholdId == householdId)
-            .ToArrayAsync();
+            .ToArrayAsync(cancellationToken);
         
         _logger.LogDebug("Retrieved {Count} recipes for household {HouseholdId}", recipes.Length, householdId);
         return recipes.OrderByDescending(r => r.CreatedAt).ToArray();
     }
 
-    public async Task<Recipe?> GetByIdAsync(Guid id)
+    public async Task<Recipe?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
         return await _context.Recipes
             .Include(r => r.Ingredients)
-            .FirstOrDefaultAsync(r => r.Id == id);
+            .FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
     }
 
-    public async Task<Recipe> CreateAsync(Guid householdId, CreateRecipeRequest request)
+    public async Task<Recipe> CreateAsync(Guid householdId, CreateRecipeRequest request, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Creating recipe {Name} for household {HouseholdId}", request.Name, householdId);
         var now = DateTimeOffset.UtcNow;
@@ -61,17 +61,17 @@ public sealed class RecipeStore
         };
 
         _context.Recipes.Add(recipe);
-        await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync(cancellationToken);
         _logger.LogInformation("Recipe {RecipeId} created successfully", recipe.Id);
         return recipe;
     }
 
-    public async Task<Recipe?> UpdateAsync(Guid id, UpdateRecipeRequest request)
+    public async Task<Recipe?> UpdateAsync(Guid id, UpdateRecipeRequest request, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Updating recipe {RecipeId}", id);
         var existing = await _context.Recipes
             .Include(r => r.Ingredients)
-            .FirstOrDefaultAsync(r => r.Id == id);
+            .FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
         
         if (existing == null)
         {
@@ -105,15 +105,15 @@ public sealed class RecipeStore
 
         existing.UpdatedAt = DateTimeOffset.UtcNow;
 
-        await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync(cancellationToken);
         _logger.LogInformation("Recipe {RecipeId} updated successfully", id);
         return existing;
     }
 
-    public async Task<bool> DeleteAsync(Guid id)
+    public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Deleting recipe {RecipeId}", id);
-        var recipe = await _context.Recipes.FindAsync(id);
+        var recipe = await _context.Recipes.FindAsync(new object[] { id }, cancellationToken);
         if (recipe == null)
         {
             _logger.LogWarning("Delete failed: Recipe {RecipeId} not found", id);
@@ -121,18 +121,18 @@ public sealed class RecipeStore
         }
 
         _context.Recipes.Remove(recipe);
-        await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync(cancellationToken);
         _logger.LogInformation("Recipe {RecipeId} deleted successfully", id);
         return true;
     }
 
-    public async Task<IReadOnlyCollection<string>> GetIngredientSuggestionsAsync(Guid householdId, string query)
+    public async Task<IReadOnlyCollection<string>> GetIngredientSuggestionsAsync(Guid householdId, string query, CancellationToken cancellationToken = default)
     {
         // Get unique ingredient names from user's food items
         var lowerQuery = query.ToLower();
         var foodItems = await _context.FoodItems
             .Where(f => f.HouseholdId == householdId && f.Name.ToLower().Contains(lowerQuery))
-            .ToArrayAsync();
+            .ToArrayAsync(cancellationToken);
 
         var suggestions = foodItems
             .Select(f => f.Name)
@@ -144,10 +144,10 @@ public sealed class RecipeStore
         return suggestions;
     }
 
-    public async Task UpdatePhotosAsync(Guid id, List<string> photos)
+    public async Task UpdatePhotosAsync(Guid id, List<RecipePhoto> photos, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Updating photos for recipe {RecipeId}", id);
-        var recipe = await _context.Recipes.FindAsync(id);
+        var recipe = await _context.Recipes.FindAsync(new object[] { id }, cancellationToken);
         if (recipe == null)
         {
             _logger.LogWarning("Update photos failed: Recipe {RecipeId} not found", id);
@@ -156,7 +156,7 @@ public sealed class RecipeStore
 
         recipe.Photos = photos;
         recipe.UpdatedAt = DateTimeOffset.UtcNow;
-        await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync(cancellationToken);
         _logger.LogInformation("Photos updated for recipe {RecipeId}", id);
     }
 }

@@ -22,11 +22,11 @@ public sealed class AuthenticationService
         _logger = logger;
     }
 
-    public async Task<User?> AuthenticateAsync(string email, string password)
+    public async Task<User?> AuthenticateAsync(string email, string password, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Attempting authentication for user {Email}", email);
         
-        var user = await _userStore.GetByEmailAsync(email);
+        var user = await _userStore.GetByEmailAsync(email, cancellationToken);
         if (user == null)
         {
             _logger.LogWarning("Authentication failed: User not found for email {Email}", email);
@@ -43,11 +43,11 @@ public sealed class AuthenticationService
         return user;
     }
 
-    public async Task<(User user, Household household)?> RegisterAsync(string email, string password, string name, string householdName)
+    public async Task<(User user, Household household)?> RegisterAsync(string email, string password, string name, string householdName, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Starting registration for user {Email} with household {HouseholdName}", email, householdName);
         
-        var existing = await _userStore.GetByEmailAsync(email);
+        var existing = await _userStore.GetByEmailAsync(email, cancellationToken);
         if (existing != null)
         {
             _logger.LogWarning("Registration failed: Email {Email} already exists", email);
@@ -71,18 +71,18 @@ public sealed class AuthenticationService
         household.MemberIds.Add(user.Id);
         user.HouseholdIds.Add(household.Id);
 
-        await _householdStore.CreateAsync(household);
-        await _userStore.CreateAsync(user);
+        await _householdStore.CreateAsync(household, cancellationToken);
+        await _userStore.CreateAsync(user, cancellationToken);
 
         _logger.LogInformation("User {UserId} registered successfully with household {HouseholdId}", user.Id, household.Id);
         return (user, household);
     }
 
-    public async Task<ApplicationContext?> BuildContextAsync(Guid userId, Guid? householdId = null)
+    public async Task<ApplicationContext?> BuildContextAsync(Guid userId, Guid? householdId = null, CancellationToken cancellationToken = default)
     {
         _logger.LogDebug("Building application context for user {UserId}, household {HouseholdId}", userId, householdId?.ToString() ?? "current");
         
-        var user = await _userStore.GetByIdAsync(userId);
+        var user = await _userStore.GetByIdAsync(userId, cancellationToken);
         if (user == null)
         {
             _logger.LogWarning("Failed to build context: User {UserId} not found", userId);
@@ -96,7 +96,7 @@ public sealed class AuthenticationService
             return null;
         }
 
-        var household = await _householdStore.GetByIdAsync(targetHouseholdId.Value);
+        var household = await _householdStore.GetByIdAsync(targetHouseholdId.Value, cancellationToken);
         if (household == null || !household.MemberIds.Contains(userId))
         {
             _logger.LogWarning("Failed to build context: User {UserId} not member of household {HouseholdId}", userId, targetHouseholdId);

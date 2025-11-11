@@ -18,7 +18,7 @@ internal static class AdminEndpoints
         var group = endpoints.MapGroup("/api/admin");
         group.RequireAuthorization();
 
-        group.MapGet("/users", async Task<IResult> (HttpContext httpContext, UserStore userStore, ILogger<Program> logger) =>
+        group.MapGet("/users", async Task<IResult> (HttpContext httpContext, UserStore userStore, ILogger<Program> logger, CancellationToken cancellationToken) =>
         {
             var userId = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             logger.LogInformation("Getting all users - Requested by user: {UserId}", userId);
@@ -36,14 +36,14 @@ internal static class AdminEndpoints
                 return Results.BadRequest("Invalid user ID format");
             }
 
-            var currentUser = await userStore.GetByIdAsync(userGuid);
+            var currentUser = await userStore.GetByIdAsync(userGuid, cancellationToken);
             if (currentUser == null || !currentUser.IsAdmin)
             {
                 logger.LogWarning("Non-admin user {UserId} attempted to access admin endpoint", userId);
                 return Results.Forbid();
             }
 
-            var users = await userStore.GetAllUsersAsync();
+            var users = await userStore.GetAllUsersAsync(cancellationToken);
             logger.LogInformation("Retrieved {UserCount} users for admin {UserId}", users.Count(), userId);
 
             var userList = users.Select(u => new
@@ -59,7 +59,7 @@ internal static class AdminEndpoints
             return Results.Ok(userList);
         });
 
-        group.MapPost("/users/{id}/reset-password", async Task<IResult> (Guid id, ResetPasswordRequest request, HttpContext httpContext, UserStore userStore, PasswordHasher passwordHasher, ILogger<Program> logger) =>
+        group.MapPost("/users/{id}/reset-password", async Task<IResult> (Guid id, ResetPasswordRequest request, HttpContext httpContext, UserStore userStore, PasswordHasher passwordHasher, ILogger<Program> logger, CancellationToken cancellationToken) =>
         {
             var userId = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             logger.LogInformation("Resetting password for user {TargetUserId} - Requested by {AdminUserId}", id, userId);
@@ -77,7 +77,7 @@ internal static class AdminEndpoints
                 return Results.BadRequest("Invalid user ID format");
             }
 
-            var currentUser = await userStore.GetByIdAsync(adminUserGuid);
+            var currentUser = await userStore.GetByIdAsync(adminUserGuid, cancellationToken);
             if (currentUser == null || !currentUser.IsAdmin)
             {
                 logger.LogWarning("Non-admin user {UserId} attempted to reset password for {TargetUserId}", userId, id);
@@ -90,7 +90,7 @@ internal static class AdminEndpoints
                 return Results.ValidationProblem(errors);
             }
 
-            var targetUser = await userStore.GetByIdAsync(id);
+            var targetUser = await userStore.GetByIdAsync(id, cancellationToken);
             if (targetUser == null)
             {
                 logger.LogWarning("Password reset failed - User {TargetUserId} not found", id);
@@ -98,7 +98,7 @@ internal static class AdminEndpoints
             }
 
             targetUser.PasswordHash = passwordHasher.HashPassword(request.NewPassword);
-            await userStore.UpdateAsync(targetUser);
+            await userStore.UpdateAsync(targetUser, cancellationToken);
             
             logger.LogInformation("Password successfully reset for user {TargetUserId} by admin {AdminUserId}", id, userId);
 
