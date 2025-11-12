@@ -1,10 +1,22 @@
 # What Is In My Fridge
 
-Full‑stack app to manage household food inventory, grocery lists, and recipes.
+Full‑stack app to manage household food inventory, grocery lists, recipes, and meal prep planning.
 
 - Backend: .NET (Minimal API) with Cosmos DB + Blob Storage
 - Frontend: Svelte + Vite powered by Deno
 - Local developer experience via .NET Aspire AppHost (Cosmos + Azurite emulators)
+
+## Features
+
+- **Food Inventory Management** — Track what's in your fridge, freezer, and pantry
+- **Recipe Management** — Store and organize your favorite recipes with photos
+- **Grocery Lists** — Create shopping lists and mark items as purchased
+- **Meal Prep Planning** — Plan meals in advance with an interactive calendar
+  - Drag-and-drop meal scheduling
+  - Recipe details and cooking instructions
+  - Generate grocery lists from planned meals
+  - Mobile-responsive with orientation-based views (Day/Week)
+- **Household Sharing** — Multiple users can share the same household inventory
 
 ## Repo Structure
 

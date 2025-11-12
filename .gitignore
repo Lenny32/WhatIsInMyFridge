@@ -291,6 +291,10 @@ FakesAssemblies/
 .ntvs_analysis.dat
 node_modules/
 
+# npm artifacts (project uses Deno)
+frontend/package.json
+frontend/package-lock.json
+
 # Vite
 .vite/
 dist/
