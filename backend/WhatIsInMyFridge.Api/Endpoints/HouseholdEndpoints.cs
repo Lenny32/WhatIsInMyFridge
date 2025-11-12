@@ -222,6 +222,174 @@ internal static class HouseholdEndpoints
             return Results.NoContent();
         });
 
+        // Invite endpoints
+        group.MapPost("/{householdId}/invites", async Task<IResult> (Guid householdId, CreateHouseholdInviteRequest request, HttpContext httpContext, HouseholdStore householdStore, HouseholdInviteStore inviteStore, IEmailService emailService, ILogger<Program> logger, CancellationToken cancellationToken) =>
+        {
+            var userIdString = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            logger.LogInformation("Creating invite for household {HouseholdId} to {Email} by user {UserId}", householdId, request.Email, userIdString);
+            
+            if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out Guid userId))
+            {
+                logger.LogWarning("Unauthorized attempt to create household invite");
+                return Results.Unauthorized();
+            }
+
+            if (!ValidationHelper.TryValidate(request, out var errors))
+            {
+                logger.LogWarning("Invalid create household invite request for household {HouseholdId}", householdId);
+                return Results.ValidationProblem(errors);
+            }
+
+            var household = await householdStore.GetByIdAsync(householdId, cancellationToken);
+            if (household == null)
+            {
+                logger.LogWarning("Household {HouseholdId} not found", householdId);
+                return Results.NotFound();
+            }
+
+            if (household.OwnerId != userId)
+            {
+                logger.LogWarning("Non-owner user {UserId} attempted to create invite for household {HouseholdId}", userId, householdId);
+                return Results.Forbid();
+            }
+
+            // Generate a secure token for the invite
+            var token = Convert.ToBase64String(Guid.NewGuid().ToByteArray()) + Convert.ToBase64String(Guid.NewGuid().ToByteArray());
+            token = token.Replace("+", "-").Replace("/", "_").Replace("=", "");
+
+            var invite = new HouseholdInvite
+            {
+                HouseholdId = householdId,
+                InvitedEmail = request.Email,
+                InvitedByUserId = userId,
+                Token = token,
+                Status = InviteStatus.Pending,
+                ExpiresAt = DateTimeOffset.UtcNow.AddDays(7)
+            };
+
+            await inviteStore.CreateAsync(invite, cancellationToken);
+
+            // Send email with invite (mocked)
+            await emailService.SendHouseholdInviteEmailAsync(request.Email, household.Name, token, cancellationToken);
+            
+            logger.LogInformation("Successfully created invite {InviteId} for household {HouseholdId}", invite.Id, householdId);
+
+            return Results.Ok(new 
+            { 
+                inviteId = invite.Id,
+                token = invite.Token,
+                email = invite.InvitedEmail,
+                expiresAt = invite.ExpiresAt,
+                status = invite.Status.ToString()
+            });
+        });
+
+        group.MapGet("/invites/pending", async Task<IResult> (HttpContext httpContext, HouseholdInviteStore inviteStore, UserStore userStore, ILogger<Program> logger, CancellationToken cancellationToken) =>
+        {
+            var userIdString = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            logger.LogInformation("Getting pending invites for user {UserId}", userIdString);
+            
+            if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out Guid userId))
+            {
+                logger.LogWarning("Unauthorized access to pending invites endpoint");
+                return Results.Unauthorized();
+            }
+
+            var user = await userStore.GetByIdAsync(userId, cancellationToken);
+            if (user == null)
+            {
+                logger.LogWarning("User {UserId} not found", userId);
+                return Results.Unauthorized();
+            }
+
+            var invites = await inviteStore.GetPendingByEmailAsync(user.Email, cancellationToken);
+            logger.LogInformation("Retrieved {InviteCount} pending invites for user {UserId}", invites.Count, userId);
+            
+            return Results.Ok(invites);
+        });
+
+        group.MapPost("/invites/accept", async Task<IResult> (AcceptHouseholdInviteRequest request, HttpContext httpContext, HouseholdInviteStore inviteStore, HouseholdStore householdStore, UserStore userStore, ILogger<Program> logger, CancellationToken cancellationToken) =>
+        {
+            var userIdString = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            logger.LogInformation("Accepting invite with token by user {UserId}", userIdString);
+            
+            if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out Guid userId))
+            {
+                logger.LogWarning("Unauthorized attempt to accept invite");
+                return Results.Unauthorized();
+            }
+
+            if (!ValidationHelper.TryValidate(request, out var errors))
+            {
+                logger.LogWarning("Invalid accept invite request");
+                return Results.ValidationProblem(errors);
+            }
+
+            var invite = await inviteStore.GetByTokenAsync(request.Token, cancellationToken);
+            if (invite == null)
+            {
+                logger.LogWarning("Invite with token not found");
+                return Results.NotFound(new { error = "Invalid invite token" });
+            }
+
+            if (invite.Status != InviteStatus.Pending)
+            {
+                logger.LogWarning("Invite {InviteId} is not pending (status: {Status})", invite.Id, invite.Status);
+                return Results.BadRequest(new { error = $"Invite is {invite.Status.ToString().ToLower()}" });
+            }
+
+            if (invite.ExpiresAt < DateTimeOffset.UtcNow)
+            {
+                logger.LogWarning("Invite {InviteId} has expired", invite.Id);
+                invite.Status = InviteStatus.Expired;
+                await inviteStore.UpdateAsync(invite, cancellationToken);
+                return Results.BadRequest(new { error = "Invite has expired" });
+            }
+
+            var user = await userStore.GetByIdAsync(userId, cancellationToken);
+            if (user == null)
+            {
+                logger.LogWarning("User {UserId} not found", userId);
+                return Results.Unauthorized();
+            }
+
+            if (user.Email != invite.InvitedEmail)
+            {
+                logger.LogWarning("User {UserId} email does not match invite email", userId);
+                return Results.Forbid();
+            }
+
+            var household = await householdStore.GetByIdAsync(invite.HouseholdId, cancellationToken);
+            if (household == null)
+            {
+                logger.LogWarning("Household {HouseholdId} not found for invite {InviteId}", invite.HouseholdId, invite.Id);
+                return Results.NotFound(new { error = "Household not found" });
+            }
+
+            if (household.MemberIds.Contains(userId))
+            {
+                logger.LogWarning("User {UserId} is already a member of household {HouseholdId}", userId, invite.HouseholdId);
+                return Results.BadRequest(new { error = "You are already a member of this household" });
+            }
+
+            // Add user to household
+            household.MemberIds.Add(userId);
+            await householdStore.UpdateAsync(household, cancellationToken);
+
+            // Add household to user
+            user.HouseholdIds.Add(household.Id);
+            await userStore.UpdateAsync(user, cancellationToken);
+
+            // Update invite status
+            invite.Status = InviteStatus.Accepted;
+            invite.AcceptedAt = DateTimeOffset.UtcNow;
+            await inviteStore.UpdateAsync(invite, cancellationToken);
+            
+            logger.LogInformation("User {UserId} successfully accepted invite {InviteId} and joined household {HouseholdId}", userId, invite.Id, household.Id);
+
+            return Results.Ok(new { household, message = "Successfully joined household" });
+        });
+
         return endpoints;
     }
 }

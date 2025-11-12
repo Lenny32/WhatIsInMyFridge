@@ -4,21 +4,33 @@
   import { apiClient } from "./api";
   import type { Household } from "./types";
 
+  interface PendingInvite {
+    id: string;
+    householdId: string;
+    invitedEmail: string;
+    token: string;
+    status: string;
+    createdAt: string;
+    expiresAt: string;
+  }
+
   let households: Household[] = [];
   let currentHousehold: Household | null = null;
   let members: Array<{ id: string; name: string; email: string; isOwner: boolean }> = [];
+  let pendingInvites: PendingInvite[] = [];
   let inviteEmail = "";
   let inviteError = "";
   let inviteSuccess = "";
   let isLoading = false;
   let isLoadingMembers = false;
+  let isLoadingInvites = false;
   let switchingHousehold = false;
 
   $: currentUserId = $authStore.user?.id;
   $: currentHouseholdId = $authStore.household?.id;
 
   onMount(async () => {
-    await loadHouseholds();
+    await Promise.all([loadHouseholds(), loadPendingInvites()]);
     if (currentHouseholdId) {
       await loadHouseholdMembers();
     }
@@ -33,6 +45,39 @@
       }
     } catch (error) {
       console.error("Failed to load households:", error);
+    }
+  }
+
+  async function loadPendingInvites() {
+    isLoadingInvites = true;
+    try {
+      const response = await apiClient.GET("/api/households/invites/pending");
+      if (response.data) {
+        pendingInvites = response.data as PendingInvite[];
+      }
+    } catch (error) {
+      console.error("Failed to load pending invites:", error);
+    } finally {
+      isLoadingInvites = false;
+    }
+  }
+
+  async function acceptInvite(token: string) {
+    try {
+      const response = await apiClient.POST("/api/households/invites/accept", {
+        body: { token },
+      });
+
+      if (response.error) {
+        throw new Error(response.error.toString());
+      }
+
+      // Reload households and invites
+      await Promise.all([loadHouseholds(), loadPendingInvites()]);
+      alert("Successfully joined the household!");
+    } catch (error: any) {
+      console.error("Failed to accept invite:", error);
+      alert(error.message || "Failed to accept invite. Please try again.");
     }
   }
 
@@ -78,7 +123,7 @@
 
     isLoading = true;
     try {
-      const response = await apiClient.POST("/api/households/{householdId}/members", {
+      const response = await apiClient.POST("/api/households/{householdId}/invites", {
         params: { path: { householdId: currentHouseholdId } },
         body: { email: inviteEmail },
       });
@@ -87,9 +132,9 @@
         throw new Error(response.error.toString());
       }
 
-      inviteSuccess = `Invite sent to ${inviteEmail}`;
+      inviteSuccess = `Invite sent to ${inviteEmail}. They will receive an email with instructions to accept.`;
       inviteEmail = "";
-      await loadHouseholdMembers();
+      // Note: Member won't appear in the list until they accept the invite
     } catch (error: any) {
       console.error("Failed to send invite:", error);
       inviteError = error.message || "Failed to send invite. Please try again.";
@@ -180,6 +225,31 @@
     {/if}
   </section>
 
+  {#if pendingInvites.length > 0}
+    <section class="settings-section">
+      <h2>Pending Invites</h2>
+      <p class="section-description">
+        You have been invited to join the following households. Accept the invite to start collaborating.
+      </p>
+      <div class="invites-list">
+        {#each pendingInvites as invite}
+          <div class="invite-item">
+            <div class="invite-info">
+              <div class="invite-icon">📨</div>
+              <div class="invite-details">
+                <div class="invite-household">Household Invite</div>
+                <div class="invite-expires">Expires: {new Date(invite.expiresAt).toLocaleDateString()}</div>
+              </div>
+            </div>
+            <button class="accept-btn" on:click={() => acceptInvite(invite.token)}>
+              Accept
+            </button>
+          </div>
+        {/each}
+      </div>
+    </section>
+  {/if}
+
   {#if currentHousehold}
     <section class="settings-section">
       <h2>Household Members</h2>
@@ -215,8 +285,7 @@
       <section class="settings-section">
         <h2>Invite Members</h2>
         <p class="section-description">
-          Invite others to join your household by entering their email address. They must already
-          have an account.
+          Send an invitation to join your household. The invitee will receive an email (currently mocked) with a secure link. They must have an account to accept the invite.
         </p>
 
         <div class="invite-form">
@@ -462,6 +531,71 @@
   .loading-text {
     color: var(--text-secondary);
     font-style: italic;
+  }
+
+  .invites-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .invite-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    transition: all 0.2s;
+    background-color: #fffbeb;
+    border-left: 4px solid #f59e0b;
+  }
+
+  .invite-item:hover {
+    border-color: #f59e0b;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  }
+
+  .invite-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .invite-icon {
+    font-size: 2rem;
+  }
+
+  .invite-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .invite-household {
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .invite-expires {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+  }
+
+  .accept-btn {
+    padding: 0.5rem 1rem;
+    background-color: #10b981;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+
+  .accept-btn:hover {
+    background-color: #059669;
   }
 
   @media screen and (max-width: 767px) {
