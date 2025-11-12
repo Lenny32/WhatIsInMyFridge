@@ -46,7 +46,7 @@ public sealed class MealPlanStore
 
     public async Task<MealPlan> CreateAsync(Guid householdId, CreateMealPlanRequest request, CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Creating meal plan for household {HouseholdId} on {PlannedDate}", householdId, request.PlannedDate);
+        _logger.LogInformation("Creating meal plan for household {HouseholdId} on {PlannedDate}", householdId, request.PlannedDate.ToString("O"));
         var now = DateTimeOffset.UtcNow;
         var mealPlan = new MealPlan
         {
