@@ -8,10 +8,12 @@
   import Recipes from "./lib/Recipes.svelte";
   import GroceryList from "./lib/GroceryList.svelte";
   import Admin from "./lib/Admin.svelte";
+  import Settings from "./lib/Settings.svelte";
 
   let authView: "login" | "register" = "login";
-  let currentView: "inventory" | "recipes" | "grocery" | "admin" = "inventory";
+  let currentView: "inventory" | "recipes" | "grocery" | "admin" | "settings" = "inventory";
   let isPWA = false;
+  let mobileMenuOpen = false;
 
   onMount(async () => {
     // Check if app is running as PWA
@@ -45,6 +47,11 @@
     }
   }
 
+  function navigateTo(view: typeof currentView) {
+    currentView = view;
+    mobileMenuOpen = false;
+  }
+
   $: userName = $authStore.user?.name || "User";
   $: householdName = $authStore.household?.name || "Household";
   $: isAdmin = $authStore.user?.isAdmin || false;
@@ -63,6 +70,12 @@
 {:else}
   <div class="app-container">
     <header class="app-header">
+      <button class="burger-menu" on:click={() => mobileMenuOpen = !mobileMenuOpen}>
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+      
       <div class="user-info">
         <div class="user-avatar">
           {userName.charAt(0).toUpperCase()}
@@ -79,33 +92,40 @@
       {/if}
     </header>
 
-    <nav class="main-nav">
+    <nav class="main-nav" class:mobile-open={mobileMenuOpen}>
       <button 
         class="nav-btn" 
         class:active={currentView === "inventory"}
-        on:click={() => currentView = "inventory"}
+        on:click={() => navigateTo("inventory")}
       >
         Inventory
       </button>
       <button 
         class="nav-btn" 
         class:active={currentView === "recipes"}
-        on:click={() => currentView = "recipes"}
+        on:click={() => navigateTo("recipes")}
       >
         Recipes
       </button>
       <button 
         class="nav-btn" 
         class:active={currentView === "grocery"}
-        on:click={() => currentView = "grocery"}
+        on:click={() => navigateTo("grocery")}
       >
         Grocery List
+      </button>
+      <button 
+        class="nav-btn" 
+        class:active={currentView === "settings"}
+        on:click={() => navigateTo("settings")}
+      >
+        Settings
       </button>
       {#if isAdmin}
         <button 
           class="nav-btn" 
           class:active={currentView === "admin"}
-          on:click={() => currentView = "admin"}
+          on:click={() => navigateTo("admin")}
         >
           Admin
         </button>
@@ -118,6 +138,8 @@
       <Recipes />
     {:else if currentView === "grocery"}
       <GroceryList />
+    {:else if currentView === "settings"}
+      <Settings />
     {:else if currentView === "admin"}
       <Admin />
     {/if}
@@ -207,6 +229,24 @@
     filter: brightness(1.1);
   }
 
+  .burger-menu {
+    display: none;
+    flex-direction: column;
+    gap: 4px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.5rem;
+  }
+
+  .burger-menu span {
+    width: 24px;
+    height: 3px;
+    background-color: var(--text-primary);
+    border-radius: 2px;
+    transition: all 0.3s ease;
+  }
+
   .main-nav {
     background: white;
     border-bottom: 1px solid #e5e7eb;
@@ -240,10 +280,52 @@
     .app-header {
       padding: 1rem;
     }
+
+    .burger-menu {
+      display: flex;
+    }
     
     .logout-btn {
       padding: 0.4rem 1rem;
       font-size: 0.85rem;
+    }
+
+    .main-nav {
+      position: fixed;
+      top: 0;
+      left: -100%;
+      width: 280px;
+      height: 100vh;
+      flex-direction: column;
+      padding: 1rem;
+      gap: 0.5rem;
+      background: white;
+      border-right: 1px solid #e5e7eb;
+      box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+      transition: left 0.3s ease;
+      z-index: 1000;
+    }
+
+    .main-nav.mobile-open {
+      left: 0;
+    }
+
+    .nav-btn {
+      width: 100%;
+      text-align: left;
+      padding: 1rem;
+      border-radius: 6px;
+      border-bottom: none;
+    }
+
+    .nav-btn:hover {
+      background-color: #f3f4f6;
+    }
+
+    .nav-btn.active {
+      background-color: #eff6ff;
+      color: #3b82f6;
+      border-bottom: none;
     }
   }
 </style>
