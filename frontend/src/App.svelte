@@ -8,9 +8,10 @@
   import Recipes from "./lib/Recipes.svelte";
   import GroceryList from "./lib/GroceryList.svelte";
   import Admin from "./lib/Admin.svelte";
+  import MealPrep from "./lib/MealPrep.svelte";
 
   let authView: "login" | "register" = "login";
-  let currentView: "inventory" | "recipes" | "grocery" | "admin" = "inventory";
+  let currentView: "inventory" | "recipes" | "grocery" | "mealprep" | "admin" = "inventory";
   let isPWA = false;
 
   onMount(async () => {
@@ -96,6 +97,13 @@
       </button>
       <button 
         class="nav-btn" 
+        class:active={currentView === "mealprep"}
+        on:click={() => currentView = "mealprep"}
+      >
+        Meal Prep
+      </button>
+      <button 
+        class="nav-btn" 
         class:active={currentView === "grocery"}
         on:click={() => currentView = "grocery"}
       >
@@ -116,6 +124,8 @@
       <Inventory />
     {:else if currentView === "recipes"}
       <Recipes />
+    {:else if currentView === "mealprep"}
+      <MealPrep />
     {:else if currentView === "grocery"}
       <GroceryList />
     {:else if currentView === "admin"}
