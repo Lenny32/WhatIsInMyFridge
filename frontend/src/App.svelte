@@ -92,6 +92,10 @@
       {/if}
     </header>
 
+    {#if mobileMenuOpen}
+      <div class="mobile-overlay" on:click={() => mobileMenuOpen = false}></div>
+    {/if}
+
     <nav class="main-nav" class:mobile-open={mobileMenuOpen}>
       <button 
         class="nav-btn" 
@@ -247,6 +251,10 @@
     transition: all 0.3s ease;
   }
 
+  .mobile-overlay {
+    display: none;
+  }
+
   .main-nav {
     background: white;
     border-bottom: 1px solid #e5e7eb;
@@ -288,6 +296,17 @@
     .logout-btn {
       padding: 0.4rem 1rem;
       font-size: 0.85rem;
+    }
+
+    .mobile-overlay {
+      display: block;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      z-index: 999;
     }
 
     .main-nav {
