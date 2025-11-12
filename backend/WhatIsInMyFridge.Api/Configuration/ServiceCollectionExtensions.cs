@@ -19,6 +19,7 @@ internal static class ServiceCollectionExtensions
         services.AddScoped<FoodInventoryStore>();
         services.AddScoped<RecipeStore>();
         services.AddScoped<GroceryListStore>();
+        services.AddScoped<MealPlanStore>();
         services.AddSingleton<PasswordHasher>();
         services.AddScoped<AuthenticationService>();
         services.AddScoped<ApplicationContext>();

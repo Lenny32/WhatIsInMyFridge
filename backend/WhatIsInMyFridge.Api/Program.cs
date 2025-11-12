@@ -37,6 +37,7 @@ app.MapHouseholdEndpoints();
 app.MapFoodInventoryEndpoints();
 app.MapRecipeEndpoints();
 app.MapGroceryEndpoints();
+app.MapMealPlanEndpoints();
 app.MapAdminEndpoints();
 app.MapDevelopmentEndpoints(app.Environment);
 

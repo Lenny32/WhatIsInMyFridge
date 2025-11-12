@@ -18,6 +18,7 @@ public sealed class AppDbContext : DbContext
     // RecipeIngredient is owned by Recipe - not a standalone entity
     // public DbSet<RecipeIngredient> RecipeIngredients => Set<RecipeIngredient>();
     public DbSet<GroceryItem> GroceryItems { get; set; }
+    public DbSet<MealPlan> MealPlans { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -110,6 +111,16 @@ public sealed class AppDbContext : DbContext
             entity.Property(e => e.Name).IsRequired();
             entity.Property(e => e.Category)
                 .HasConversion<string>();
+        });
+
+        modelBuilder.Entity<MealPlan>(entity =>
+        {
+            entity.ToContainer("MealPlans");
+            entity.HasPartitionKey(e => e.Id);
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.HouseholdId).IsRequired();
+            entity.Property(e => e.RecipeId).IsRequired();
+            entity.Property(e => e.PlannedDate).IsRequired();
         });
     }
 }
