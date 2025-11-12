@@ -42,7 +42,9 @@ public sealed class HouseholdInviteStore
 
     public async Task<HouseholdInvite> CreateAsync(HouseholdInvite invite, CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Creating household invite {InviteId} for email {Email}", invite.Id, invite.InvitedEmail);
+        // Sanitize email for logging to prevent log injection
+        var sanitizedEmail = invite.InvitedEmail?.Replace("\n", "").Replace("\r", "").Replace("\t", "");
+        _logger.LogInformation("Creating household invite {InviteId} for email {Email}", invite.Id, sanitizedEmail);
         _context.HouseholdInvites.Add(invite);
         await _context.SaveChangesAsync(cancellationToken);
         _logger.LogInformation("Household invite {InviteId} created successfully", invite.Id);

@@ -226,7 +226,9 @@ internal static class HouseholdEndpoints
         group.MapPost("/{householdId}/invites", async Task<IResult> (Guid householdId, CreateHouseholdInviteRequest request, HttpContext httpContext, HouseholdStore householdStore, HouseholdInviteStore inviteStore, IEmailService emailService, ILogger<Program> logger, CancellationToken cancellationToken) =>
         {
             var userIdString = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            logger.LogInformation("Creating invite for household {HouseholdId} to {Email} by user {UserId}", householdId, request.Email, userIdString);
+            // Sanitize email for logging to prevent log injection
+            var sanitizedEmail = request.Email?.Replace("\n", "").Replace("\r", "").Replace("\t", "");
+            logger.LogInformation("Creating invite for household {HouseholdId} to {Email} by user {UserId}", householdId, sanitizedEmail, userIdString);
             
             if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out Guid userId))
             {
@@ -260,7 +262,7 @@ internal static class HouseholdEndpoints
             var invite = new HouseholdInvite
             {
                 HouseholdId = householdId,
-                InvitedEmail = request.Email,
+                InvitedEmail = request.Email!, // Validated by ValidationHelper above
                 InvitedByUserId = userId,
                 Token = token,
                 Status = InviteStatus.Pending,
@@ -270,7 +272,7 @@ internal static class HouseholdEndpoints
             await inviteStore.CreateAsync(invite, cancellationToken);
 
             // Send email with invite (mocked)
-            await emailService.SendHouseholdInviteEmailAsync(request.Email, household.Name, token, cancellationToken);
+            await emailService.SendHouseholdInviteEmailAsync(request.Email!, household.Name, token, cancellationToken);
             
             logger.LogInformation("Successfully created invite {InviteId} for household {HouseholdId}", invite.Id, householdId);
 
