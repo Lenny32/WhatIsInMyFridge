@@ -8,7 +8,7 @@ public sealed class CreateMealPlanRequest
     public Guid RecipeId { get; set; }
 
     [Required]
-    public DateOnly PlannedDate { get; set; }
+    public DateTime PlannedDate { get; set; }
 
     [StringLength(100)]
     public string? MealName { get; set; }

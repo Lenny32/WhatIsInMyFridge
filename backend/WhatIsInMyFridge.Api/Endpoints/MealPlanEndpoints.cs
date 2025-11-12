@@ -23,8 +23,8 @@ internal static class MealPlanEndpoints
             MealPlanStore store, 
             RecipeStore recipeStore,
             ILogger<Program> logger, 
-            DateOnly? startDate,
-            DateOnly? endDate,
+            DateTime? startDate,
+            DateTime? endDate,
             CancellationToken cancellationToken) =>
         {
             var householdIdString = httpContext.User.FindFirst("householdId")?.Value;

@@ -16,7 +16,7 @@ public sealed class MealPlanStore
         _logger = logger;
     }
 
-    public async Task<IReadOnlyCollection<MealPlan>> GetMealPlansAsync(Guid householdId, DateOnly? startDate, DateOnly? endDate, CancellationToken cancellationToken)
+    public async Task<IReadOnlyCollection<MealPlan>> GetMealPlansAsync(Guid householdId, DateTime? startDate, DateTime? endDate, CancellationToken cancellationToken)
     {
         _logger.LogDebug("Retrieving meal plans for household {HouseholdId}", householdId);
         

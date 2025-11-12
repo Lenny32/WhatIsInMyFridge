@@ -115,7 +115,7 @@ export interface MealPlan {
   householdId: string;
   recipeId: string;
   recipe?: Recipe | null;
-  plannedDate: string; // DateOnly from backend will be a string like "2025-01-15"
+  plannedDate: string; // DateTime from backend will be a string like "2025-01-15T00:00:00"
   mealName?: string | null;
   notes?: string | null;
   createdAt: string;
@@ -124,7 +124,7 @@ export interface MealPlan {
 
 export interface CreateMealPlan {
   recipeId: string;
-  plannedDate: string; // Format: "YYYY-MM-DD"
+  plannedDate: string; // Format: ISO 8601 DateTime string
   mealName?: string;
   notes?: string;
 }

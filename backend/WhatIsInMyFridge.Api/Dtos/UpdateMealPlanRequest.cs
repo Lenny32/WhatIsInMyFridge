@@ -6,7 +6,7 @@ public sealed class UpdateMealPlanRequest
 {
     public Guid? RecipeId { get; set; }
     
-    public DateOnly? PlannedDate { get; set; }
+    public DateTime? PlannedDate { get; set; }
 
     [StringLength(100)]
     public string? MealName { get; set; }
