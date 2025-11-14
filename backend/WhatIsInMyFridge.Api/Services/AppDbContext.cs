@@ -13,6 +13,7 @@ public sealed class AppDbContext : DbContext
 
     public DbSet<User> Users { get; set; }
     public DbSet<Household> Households { get; set; }
+    public DbSet<HouseholdInvite> HouseholdInvites { get; set; }
     public DbSet<FoodItem> FoodItems { get; set; }
     public DbSet<Recipe> Recipes { get; set; }
     // RecipeIngredient is owned by Recipe - not a standalone entity
@@ -53,6 +54,20 @@ public sealed class AppDbContext : DbContext
                 .HasConversion(
                     v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
                     v => JsonSerializer.Deserialize<List<Guid>>(v, (JsonSerializerOptions?)null) ?? new List<Guid>());
+        });
+
+        modelBuilder.Entity<HouseholdInvite>(entity =>
+        {
+            entity.ToContainer("HouseholdInvites");
+            entity.HasPartitionKey(e => e.Id);
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.HouseholdId).IsRequired();
+            entity.Property(e => e.InvitedEmail).IsRequired();
+            entity.Property(e => e.InvitedByUserId).IsRequired();
+            entity.Property(e => e.Token).IsRequired();
+            entity.Property(e => e.Status)
+                .IsRequired()
+                .HasConversion<string>();
         });
 
         modelBuilder.Entity<FoodItem>(entity =>

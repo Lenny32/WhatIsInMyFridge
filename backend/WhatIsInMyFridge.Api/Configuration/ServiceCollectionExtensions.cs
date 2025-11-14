@@ -16,6 +16,7 @@ internal static class ServiceCollectionExtensions
     {
         services.AddScoped<UserStore>();
         services.AddScoped<HouseholdStore>();
+        services.AddScoped<HouseholdInviteStore>();
         services.AddScoped<FoodInventoryStore>();
         services.AddScoped<RecipeStore>();
         services.AddScoped<GroceryListStore>();
@@ -25,6 +26,7 @@ internal static class ServiceCollectionExtensions
         services.AddScoped<JwtTokenService>();
         services.AddSingleton<BlobStorageService>();
         services.AddScoped<CosmosDbInitializer>();
+        services.AddSingleton<IEmailService, MockEmailService>();
 
         return services;
     }
