@@ -1,4 +1,4 @@
-import type { CreateFoodItem, FoodItem, StorageLocation, UpdateFoodItem, LoginRequest, RegisterRequest, AuthResponse, User, Household, Recipe, CreateRecipe, UpdateRecipe } from "./types";
+import type { CreateFoodItem, FoodItem, StorageLocation, UpdateFoodItem, LoginRequest, RegisterRequest, AuthResponse, User, Household, Recipe, CreateRecipe, UpdateRecipe, MealPlan, CreateMealPlan, UpdateMealPlan } from "./types";
 import { getToken } from "./auth";
 import createClient from "openapi-fetch";
 import type { paths } from "./api-types";
@@ -304,4 +304,45 @@ export async function deleteRecipePhoto(recipeId: string, photoId: string): Prom
 
 export function getPhotoUrl(photoId: string, extension: string = ".jpg"): string {
   return `${API_BASE}/api/photos/${photoId}${extension}`;
+}
+
+// ============================================
+// Meal Plan API
+// ============================================
+
+export async function listMealPlans(startDate?: string, endDate?: string): Promise<MealPlan[]> {
+  const params = new URLSearchParams();
+  if (startDate) params.append("startDate", startDate);
+  if (endDate) params.append("endDate", endDate);
+  
+  const query = params.toString() ? `?${params.toString()}` : "";
+  return request<MealPlan[]>(`/api/mealplans${query}`, {
+    method: "GET",
+  });
+}
+
+export async function getMealPlan(id: string): Promise<MealPlan> {
+  return request<MealPlan>(`/api/mealplans/${id}`, {
+    method: "GET",
+  });
+}
+
+export async function createMealPlan(mealPlan: CreateMealPlan): Promise<MealPlan> {
+  return request<MealPlan>(`/api/mealplans`, {
+    method: "POST",
+    body: JSON.stringify(mealPlan),
+  });
+}
+
+export async function updateMealPlan(id: string, updates: UpdateMealPlan): Promise<MealPlan> {
+  return request<MealPlan>(`/api/mealplans/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(updates),
+  });
+}
+
+export async function deleteMealPlan(id: string): Promise<void> {
+  await request<void>(`/api/mealplans/${id}`, {
+    method: "DELETE",
+  });
 }

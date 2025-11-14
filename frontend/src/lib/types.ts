@@ -109,3 +109,24 @@ export interface CreateRecipe {
 }
 
 export type UpdateRecipe = Partial<CreateRecipe>;
+
+export interface MealPlan {
+  id: string;
+  householdId: string;
+  recipeId: string;
+  recipe?: Recipe | null;
+  plannedDate: string; // DateTime from backend will be a string like "2025-01-15T00:00:00"
+  mealName?: string | null;
+  notes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateMealPlan {
+  recipeId: string;
+  plannedDate: string; // Format: ISO 8601 DateTime string
+  mealName?: string;
+  notes?: string;
+}
+
+export type UpdateMealPlan = Partial<CreateMealPlan>;

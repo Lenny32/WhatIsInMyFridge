@@ -1,5 +1,6 @@
 import App from "./App.svelte";
 import "./app.css";
+import "@event-calendar/core/index.css";
 
 const target = document.getElementById("app");
 
