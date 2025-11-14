@@ -17,7 +17,8 @@ var storage = builder.AddAzureStorage("storage")
 
 var blobs = storage.AddBlobs("blobs");
 
-var deno = builder.AddDeno("frontend", "../../frontend", "dev").WithEndpoint(5174, 5173, "http", "http");
+var deno = builder.AddDeno("frontend", "../../frontend", "dev")
+    .WithEndpoint(5174, 5173, "http", "http");
 
 var api = builder.AddProject<Projects.WhatIsInMyFridge_Api>("api")
     .WithEndpoint("http", ep => ep.Port = 5000)
@@ -30,7 +31,7 @@ var api = builder.AddProject<Projects.WhatIsInMyFridge_Api>("api")
     .WithReference(cosmosDb)
     .WithReference(blobs);
 
-
+deno.WithEnvironment("VITE_API_BASE", api.GetEndpoint("http"));
 
 builder.Build().Run();
 
